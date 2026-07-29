@@ -124,8 +124,8 @@
       overflow-y: auto;
       color: white;
       background:
-        radial-gradient(circle at 72% 17%, rgba(255,222,156,.34), transparent 12%),
-        linear-gradient(180deg, rgba(46,111,209,.48), rgba(191,219,247,.34));
+        radial-gradient(circle at 74% 16%, rgba(255,226,166,.24), transparent 20%),
+        linear-gradient(180deg, #2e6fd1 0%, #4f8ddb 54%, #bfdbf7 100%);
       transition: opacity .5s ease, visibility .5s;
       cursor: pointer;
     }
@@ -133,20 +133,20 @@
       content: "";
       position: absolute;
       inset: 0;
-      background: linear-gradient(180deg, rgba(13,47,94,.02), rgba(13,47,94,.18));
+      background: linear-gradient(180deg, rgba(13,47,94,.02), rgba(13,47,94,.16));
       pointer-events: none;
     }
     #overlay.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
-    #menu-card { position: relative; z-index: 1; width: min(920px, 100%); text-align: center; }
+    #menu-card { position: relative; z-index: 1; width: min(860px, 100%); text-align: center; }
     #eyebrow { font-size: 11px; font-weight: 850; letter-spacing: 5px; opacity: .8; }
-    h1 { margin: 12px 0 4px; font-size: clamp(64px, 13vw, 142px); line-height: .76; font-weight: 1000; font-style: italic; letter-spacing: clamp(-8px, -0.55vw, -3px); text-shadow: 0 10px 42px rgba(19,55,102,.3); }
+    h1 { margin: 14px 0 4px; font-size: clamp(58px, 10vw, 116px); line-height: .82; font-weight: 1000; font-style: italic; letter-spacing: clamp(-7px, -0.48vw, -3px); text-shadow: 0 10px 42px rgba(19,55,102,.3); }
     h1 span { color: var(--orange); }
-    #subtitle { margin: 22px auto 0; max-width: 620px; font-size: clamp(14px, 2vw, 20px); font-weight: 650; letter-spacing: .8px; opacity: .92; }
+    #subtitle { margin: 18px auto 0; max-width: 620px; font-size: clamp(14px, 1.7vw, 19px); font-weight: 650; letter-spacing: .8px; opacity: .92; }
     #result { display: none; margin: 24px auto 0; }
     #result.visible { display: flex; justify-content: center; gap: clamp(28px, 7vw, 74px); }
     .result-cell span { display: block; font-size: 10px; font-weight: 850; letter-spacing: 3px; opacity: .7; }
     .result-cell b { display: block; margin-top: 4px; font-size: clamp(24px, 4vw, 40px); font-style: italic; }
-    #hints { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px; margin: 34px auto 0; }
+    #hints { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px; margin: 29px auto 0; }
     .hint {
       display: flex;
       align-items: center;
@@ -163,7 +163,7 @@
       letter-spacing: .4px;
     }
     .key { min-width: 26px; padding: 5px 7px; border-radius: 7px; background: rgba(255,255,255,.2); box-shadow: inset 0 1px rgba(255,255,255,.2); font-weight: 900; }
-    #ride-cta { margin-top: 36px; font-size: 13px; font-weight: 950; letter-spacing: 4px; animation: ctaPulse 1.35s ease-in-out infinite; }
+    #ride-cta { margin-top: 31px; font-size: 13px; font-weight: 950; letter-spacing: 4px; animation: ctaPulse 1.35s ease-in-out infinite; }
     @keyframes ctaPulse { 50% { opacity: .52; transform: translateY(3px); } }
 
     #touch-ui { position: fixed; inset: 0; z-index: 10; pointer-events: none; display: none; }
@@ -212,7 +212,7 @@
 
     @media (pointer: coarse) { #touch-ui { display: block; } #hints { display: none; } }
     @media (orientation: portrait) and (pointer: coarse) { #rotate-hint { display: grid; } }
-    @media (max-height: 620px) { h1 { font-size: clamp(54px, 15vh, 92px); } #hints { margin-top: 20px; } #ride-cta { margin-top: 22px; } }
+    @media (max-height: 620px) { h1 { font-size: clamp(46px, 14vh, 76px); } #subtitle { margin-top: 12px; } #hints { margin-top: 18px; } #ride-cta { margin-top: 18px; } }
     @media (prefers-reduced-motion: reduce) { #ride-cta { animation: none; } }
   </style>
 </head>
@@ -297,14 +297,14 @@
       renderer: {
         desktopPixelRatio: 1.5, mobilePixelRatio: 1.25, lowPixelRatio: 1.12,
         maxFramebufferPixels: 3100000, mobileFramebufferPixels: 2200000,
-        exposure: 1.05, fogColor: 0xC9DDF2, fogDensity: 0.0025,
+        exposure: 0.88, fogColor: 0xBCD4EB, fogDensity: 0.00185,
         shadowDesktop: 4096, shadowMobile: 2048, shadowBox: 62,
         qualityFrameMs: 19.5, qualityHoldSeconds: 2.8, fpsEmaMix: 0.055
       },
       colors: {
         skyTop: 0x2E6FD1, skyHorizon: 0xBFDBF7, snow: 0xF2F6FF,
         snowShadow: 0xA9C7E5, jacket: 0xE8552D, helmet: 0xF4B93D,
-        goggles: 0x267EC9, pine: 0x173F32, pineMid: 0x245843,
+        goggles: 0x267EC9, pine: 0x173D33, pineMid: 0x285A49,
         trunk: 0x624430, rock: 0x65788A, rockSnow: 0xDDEAF7,
         cyan: 0x4FD8FF, gold: 0xF4B93D, shield: 0xF4FBFF,
         redGate: 0xE8493E, blueGate: 0x327CD6, orange: 0xE8552D
@@ -332,11 +332,19 @@
         kickerCurveLimit: 0.0105, snowRoughness: 0.94
       },
       decor: {
-        maxTreesPerVariant: 26, maxRocks: 12, maxLogs: 3, maxBushes: 30,
-        nearDensity: 0.30, farDensity: 0.80, treeScaleMin: 0.95, treeScaleMax: 1.8,
+        maxTreesPerVariant: 44, maxRocks: 16, maxLogs: 3, maxBushes: 36,
+        nearDensity: 0.62, farDensity: 0.90, treeScaleMin: 0.78, treeScaleMax: 2.15,
         obstacleStartChunk: 3, obstacleRampChunks: 34, obstacleMax: 4,
-        heroChance: 0.24, logChance: 0.075, pisteRockChance: 0.18,
-        fullLod: 190, mediumLod: 430, aoRadius: 7.5, aoStrength: 0.30
+        heroChance: 0.56, logChance: 0.075, pisteRockChance: 0.18,
+        fullLod: 220, mediumLod: 460, aoRadius: 8.2, aoStrength: 0.38
+      },
+      scenery: {
+        ridgeNearDistance: 285, ridgeMidDistance: 480, ridgeFarDistance: 720,
+        ridgeSpan: 1160, ridgeSegments: 58, ridgeRows: 5, ridgeDepth: 190,
+        ridgeFloor: -52, ridgeMinHeight: 88, ridgeHeightRange: 172,
+        ridgePeaks: 13, ridgeSnowLine: 102, ridgeBaseLift: 14,
+        forestDistance: 220, forestSpan: 920, forestCount: 190,
+        forestHeightMin: 8, forestHeightMax: 25, forestBaseLift: 16
       },
       pickups: {
         slotsPerChunk: 16, orbScore: 50, magnetRadius: 3, collectRadius: 1.3,
@@ -363,20 +371,20 @@
         hardLandingVelocity: 5.2, tumbleSeconds: 1.5, tumbleSpeedFactor: 0.4
       },
       camera: {
-        height: 3.9, behind: 9.2, stiffness: 6, damping: 0.85,
-        leash: 5, terrainClearance: 1.35, lookAhead: 6.5, splineBlend: 0.20,
+        height: 2.72, behind: 7.35, stiffness: 7.4, damping: 0.88,
+        leash: 4.3, terrainClearance: 1.18, lookAhead: 8.4, splineBlend: 0.27,
         splineLookAhead: 12, rollMax: THREE.MathUtils.degToRad(5.2),
-        fovMin: 70, fovMax: 88, fovBoost: 4.5, shakeDecay: 3.4,
+        fovMin: 68, fovMax: 86, fovBoost: 4.5, shakeDecay: 3.4,
         menuRadius: 10.5, menuHeight: 4.2, menuSpeed: 0.12
       },
       effects: {
         trailSegments: 320, trailLife: 6, trailMinSpeed: 5,
-        sprayCount: 680, powderCount: 280, ringCount: 10,
-        flakesDesktop: 2000, flakesMobile: 900, snowBoxX: 80, snowBoxY: 40, snowBoxZ: 100,
-        bloomThreshold: 0.82, bloomStrength: 0.62, bloomRadius: 0.45,
+        sprayCount: 760, powderCount: 420, ringCount: 10,
+        flakesDesktop: 1600, flakesMobile: 720, snowBoxX: 80, snowBoxY: 40, snowBoxZ: 100,
+        bloomThreshold: 0.92, bloomStrength: 0.44, bloomRadius: 0.34,
         dofStart: 45, dofRange: 130, godRaySamples: 64,
         motionBlurStart: 18, streakSpeed: 32, chromaDecay: 3.8,
-        grain: 0.03, gradeContrast: 1.12, gradeSaturation: 1.08
+        grain: 0.018, gradeContrast: 1.18, gradeSaturation: 1.10
       },
       audio: {
         master: 0.60, scrapeMax: 0.24, windMax: 0.34, ambientGain: 0.045,
@@ -692,21 +700,33 @@
       const bushes = [];
       const obstacles = [];
 
-      for (let row = 0; row < 12; row++) {
-        const z = startZ + 4 + row * 8.2 + randRange(rng, -2.4, 2.4);
+      const addForestTree = (pathZ, lateral, scaleMin = CONFIG.decor.treeScaleMin, scaleMax = CONFIG.decor.treeScaleMax) => {
+        track.lateralFrame(pathZ, centerScratch, sideScratch, dirScratch);
+        const variant = randInt(rng, 0, 2);
+        if (trees[variant].length >= CONFIG.decor.maxTreesPerVariant) return;
+        trees[variant].push({
+          x: centerScratch.x + sideScratch.x * lateral,
+          z: centerScratch.z + sideScratch.z * lateral,
+          scale: randRange(rng, scaleMin, scaleMax),
+          scaleX: randRange(rng, .84, 1.13),
+          scaleY: randRange(rng, .92, 1.20),
+          scaleZ: randRange(rng, .84, 1.13),
+          yaw: randRange(rng, 0, TAU),
+          tiltX: randRange(rng, -0.045, 0.045),
+          tiltZ: randRange(rng, -0.045, 0.045),
+          obstacle: false
+        });
+      };
+
+      for (let row = 0; row < 15; row++) {
+        const pathZ = startZ + 2.5 + row * 6.75 + randRange(rng, -1.8, 1.8);
         for (let sideSign = -1; sideSign <= 1; sideSign += 2) {
-          for (let band = 0; band < 3; band++) {
-            const lateral = sideSign * (22 + band * 15 + randRange(rng, 0, 10));
-            const density = band === 0 ? CONFIG.decor.nearDensity : CONFIG.decor.farDensity;
+          for (let band = 0; band < 4; band++) {
+            const lateral = sideSign * (19.5 + band * 13.7 + randRange(rng, 0, 7.2));
+            const density = band === 0 ? CONFIG.decor.nearDensity : band === 3 ? CONFIG.decor.farDensity * .72 : Math.min(.98, CONFIG.decor.farDensity + band * .035);
             if (rng() > density) continue;
-            const x = track.xAt(z) + lateral;
-            const variant = randInt(rng, 0, 2);
-            if (trees[variant].length >= CONFIG.decor.maxTreesPerVariant) continue;
-            trees[variant].push({
-              x, z, scale: randRange(rng, CONFIG.decor.treeScaleMin, CONFIG.decor.treeScaleMax),
-              yaw: randRange(rng, 0, TAU), tiltX: randRange(rng, -0.035, 0.035), tiltZ: randRange(rng, -0.035, 0.035),
-              obstacle: false
-            });
+            addForestTree(pathZ, lateral);
+            if (band < 3 && rng() < .28) addForestTree(pathZ + randRange(rng, -3.4, 3.4), lateral + sideSign * randRange(rng, 2.2, 5.4), .72, 1.62);
           }
         }
       }
@@ -714,10 +734,11 @@
       if (rng() < CONFIG.decor.heroChance && chunkIndex > 0) {
         const z = startZ + randRange(rng, 22, 80);
         const sign = rng() < 0.5 ? -1 : 1;
-        trees[2].push({ x: track.xAt(z) + sign * randRange(rng, 16.8, 18.8), z, scale: randRange(rng, 1.65, 2.15), yaw: rng() * TAU, tiltX: 0, tiltZ: 0, obstacle: false });
+        addForestTree(z, sign * randRange(rng, 16.8, 18.8), 1.75, 2.35);
+        if (rng() < .45) addForestTree(z + randRange(rng, 3.2, 6.8), sign * randRange(rng, 19.0, 23.0), 1.05, 1.65);
       }
 
-      const rockCount = randInt(rng, 3, 8);
+      const rockCount = randInt(rng, 5, 11);
       for (let i = 0; i < rockCount; i++) {
         const z = startZ + randRange(rng, 4, 96);
         const sign = rng() < 0.5 ? -1 : 1;
@@ -725,7 +746,7 @@
         rocks.push({ x: track.xAt(z) + lateral, z, scale: randRange(rng, 0.7, 1.65), yaw: rng() * TAU, obstacle: false });
       }
 
-      const bushCount = randInt(rng, 12, CONFIG.decor.maxBushes);
+      const bushCount = randInt(rng, 18, CONFIG.decor.maxBushes);
       for (let i = 0; i < bushCount; i++) {
         const z = startZ + randRange(rng, 2, 98);
         const sign = rng() < 0.5 ? -1 : 1;
@@ -843,17 +864,18 @@
       const parts = [];
       const radial = lod === 0 ? 7 : lod === 1 ? 5 : 4;
       const tiers = lod === 2 ? 1 : variant + 2;
-      const trunk = prepareGeometry(new THREE.CylinderGeometry(0.15, 0.22, 1.8, radial, 1), CONFIG.colors.trunk);
-      trunk.translate(0, 0.9, 0); parts.push(trunk);
+      const trunkHeight = 1.55 + variant * .14;
+      const trunk = prepareGeometry(new THREE.CylinderGeometry(0.14, 0.24, trunkHeight, radial, 1), CONFIG.colors.trunk);
+      trunk.translate(0, trunkHeight * .5, 0); parts.push(trunk);
       for (let i = 0; i < tiers; i++) {
-        const y = 1.25 + i * (lod === 2 ? 0 : 0.82);
-        const radius = (1.15 - i * 0.14) * (1 + variant * 0.08);
-        const height = lod === 2 ? 3.5 : 2.25;
+        const y = 1.02 + i * (lod === 2 ? 0 : 0.76);
+        const radius = (1.22 - i * 0.13) * (1 + variant * 0.075);
+        const height = lod === 2 ? 3.65 : 2.34 + variant * .08;
         const green = prepareGeometry(new THREE.ConeGeometry(radius, height, radial, 1, false), i % 2 ? CONFIG.colors.pineMid : CONFIG.colors.pine);
-        green.translate(0, y + height * 0.46, 0); parts.push(green);
+        green.translate(0, y + height * 0.48, 0); parts.push(green);
         if (lod < 2) {
-          const cap = prepareGeometry(new THREE.ConeGeometry(radius * 0.88, height * 0.46, radial, 1, true), CONFIG.colors.rockSnow);
-          cap.translate(0, y + height * 0.70, 0); parts.push(cap);
+          const cap = prepareGeometry(new THREE.ConeGeometry(radius * 0.91, height * 0.34, radial, 1, true), CONFIG.colors.rockSnow);
+          cap.translate(0, y + height * 0.77, 0); parts.push(cap);
         }
       }
       return mergeColored(parts);
@@ -861,7 +883,9 @@
 
     function makeRockGeometry(lod) {
       const detail = lod === 0 ? 1 : 0;
-      let g = new THREE.IcosahedronGeometry(1, detail).toNonIndexed();
+      const source = new THREE.IcosahedronGeometry(1, detail);
+      let g = source.index ? source.toNonIndexed() : source;
+      if (g !== source) source.dispose();
       g.deleteAttribute('uv');
       const p = g.getAttribute('position');
       const rng = mulberry32(CONFIG.seed ^ (lod * 7919) ^ 0xB0C);
@@ -939,9 +963,9 @@
     const cameraHeading = new THREE.Vector3(0, 0, 1);
     scene.add(camera);
 
-    const hemi = new THREE.HemisphereLight(0xCFE8FF, 0x6C87A1, 1.55);
+    const hemi = new THREE.HemisphereLight(0xCFE8FF, 0x58758E, 0.88);
     scene.add(hemi);
-    const sunLight = new THREE.DirectionalLight(0xFFE2B1, 3.2);
+    const sunLight = new THREE.DirectionalLight(0xFFE0AC, 2.75);
     sunLight.castShadow = true;
     sunLight.shadow.mapSize.set(IS_MOBILE ? CONFIG.renderer.shadowMobile : CONFIG.renderer.shadowDesktop, IS_MOBILE ? CONFIG.renderer.shadowMobile : CONFIG.renderer.shadowDesktop);
     sunLight.shadow.camera.left = sunLight.shadow.camera.bottom = -CONFIG.renderer.shadowBox * 0.5;
@@ -985,9 +1009,9 @@
 
     const sunTexture = makeRadialTexture([[0,'rgba(255,250,218,1)'],[.12,'rgba(255,234,171,1)'],[.3,'rgba(255,190,90,.45)'],[1,'rgba(255,174,66,0)']]);
     const sunSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: sunTexture, color: 0xFFF0C4, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, depthTest: true }));
-    sunSprite.scale.set(36,36,1); sunSprite.layers.set(1); scene.add(sunSprite);
-    const haloSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: sunTexture, color: 0xFFD18A, transparent: true, opacity: .46, blending: THREE.AdditiveBlending, depthWrite: false }));
-    haloSprite.scale.set(78,78,1); haloSprite.layers.set(1); scene.add(haloSprite);
+    sunSprite.scale.set(28,28,1); sunSprite.layers.set(1); scene.add(sunSprite);
+    const haloSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: sunTexture, color: 0xFFD18A, transparent: true, opacity: .36, blending: THREE.AdditiveBlending, depthWrite: false }));
+    haloSprite.scale.set(62,62,1); haloSprite.layers.set(1); scene.add(haloSprite);
 
     const decorMaterial = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.88, metalness: 0, flatShading: true });
     const snowMaterial = new THREE.MeshStandardMaterial({ color: CONFIG.colors.snow, vertexColors: true, roughness: CONFIG.terrain.snowRoughness, metalness: 0, flatShading: false });
@@ -999,15 +1023,18 @@
         .replace('#include <common>', `#include <common>\nvarying float vLateral; varying vec3 vSnowWorld;\nfloat snowHash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453123);}`)
         .replace('#include <color_fragment>', `#include <color_fragment>
           float piste=1.0-smoothstep(15.2,17.8,abs(vLateral));
-          float aa=max(fwidth(vLateral*17.0),.06);
-          float groove=1.0-smoothstep(.86-aa,.86+aa,abs(sin(vLateral*17.0)));
+          float cordPhase=vLateral*18.5;
+          float aa=max(fwidth(cordPhase)*.32,.018);
+          float groove=1.0-smoothstep(.025+aa,.15+aa*1.8,abs(sin(cordPhase)));
+          float rib=pow(abs(cos(cordPhase)),18.0);
           float edgeBand=exp(-pow((abs(vLateral)-16.0)*.55,2.0));
-          diffuseColor.rgb*=1.0-groove*piste*.055-edgeBand*.07;
-          diffuseColor.rgb=mix(diffuseColor.rgb,diffuseColor.rgb*vec3(.87,.94,1.08),smoothstep(16.0,25.0,abs(vLateral))*.34);`)
+          diffuseColor.rgb*=1.0-groove*piste*.115-edgeBand*.115;
+          diffuseColor.rgb+=vec3(.016,.025,.040)*rib*piste;
+          diffuseColor.rgb=mix(diffuseColor.rgb,diffuseColor.rgb*vec3(.80,.90,1.08),smoothstep(16.0,27.0,abs(vLateral))*.46);`)
         .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
           float pisteN=1.0-smoothstep(15.0,18.0,abs(vLateral));
-          float cord=cos(vLateral*17.0)*.018*pisteN;
-          float micro=(snowHash(floor(vSnowWorld.xz*5.0))-.5)*.026*(1.0-pisteN);
+          float cord=cos(vLateral*18.5)*.045*pisteN;
+          float micro=(snowHash(floor(vSnowWorld.xz*5.5))-.5)*.038*(1.0-pisteN);
           normal=normalize(normal+mat3(viewMatrix)*vec3(cord,micro,-cord*.35));`)
         .replace('#include <lights_fragment_end>', `#include <lights_fragment_end>
           float halfLambert=dot(normal,vec3(.0,1.0,.0))*.5+.5;
@@ -1080,7 +1107,7 @@
       eulerScratch.set(item.tiltX || 0, item.yaw || 0, item.tiltZ || 0, 'YXZ');
       quatScratch.setFromEuler(eulerScratch);
       const s = (item.scale || 1) * scaleFactor;
-      scaleScratch.set(s, s, s);
+      scaleScratch.set(s * (item.scaleX || 1), s * (item.scaleY || 1), s * (item.scaleZ || 1));
       matrixScratch.compose(posScratch, quatScratch, scaleScratch);
       mesh.setMatrixAt(index, matrixScratch);
     }
@@ -1281,8 +1308,9 @@
     }
 
     const riderMaterials = {
-      board: new THREE.MeshStandardMaterial({ color: CONFIG.colors.orange, roughness: .62, flatShading: true }),
+      board: new THREE.MeshStandardMaterial({ color: CONFIG.colors.orange, roughness: .56, flatShading: true }),
       jacket: new THREE.MeshStandardMaterial({ color: CONFIG.colors.jacket, roughness: .86, flatShading: true }),
+      jacketShadow: new THREE.MeshStandardMaterial({ color: 0xB93A25, roughness: .9, flatShading: true }),
       pants: new THREE.MeshStandardMaterial({ color: 0x263849, roughness: .88, flatShading: true }),
       boot: new THREE.MeshStandardMaterial({ color: 0x162431, roughness: .9, flatShading: true }),
       skin: new THREE.MeshStandardMaterial({ color: 0xE8B08D, roughness: .88, flatShading: true }),
@@ -1302,19 +1330,22 @@
       meshWithMaterial(new THREE.BoxGeometry(.42,.22,.7), riderMaterials.boot, character, [.38,.38,.34], [1,1,1], [0,.25,0]);
       const leftLeg = new THREE.Group(), rightLeg = new THREE.Group();
       leftLeg.position.set(-.38,.48,-.30); rightLeg.position.set(.38,.48,.30); character.add(leftLeg,rightLeg);
-      meshWithMaterial(new THREE.CapsuleGeometry(.12,.62,3,6), riderMaterials.pants, leftLeg, [0,.34,0], [1,1,1], [.28,0,-.16]);
-      meshWithMaterial(new THREE.CapsuleGeometry(.12,.62,3,6), riderMaterials.pants, rightLeg, [0,.34,0], [1,1,1], [-.28,0,.16]);
+      meshWithMaterial(new THREE.CylinderGeometry(.12,.17,.72,5,1,false), riderMaterials.pants, leftLeg, [0,.34,0], [1,1,1], [.28,0,-.16]);
+      meshWithMaterial(new THREE.CylinderGeometry(.12,.17,.72,5,1,false), riderMaterials.pants, rightLeg, [0,.34,0], [1,1,1], [-.28,0,.16]);
       const torso = new THREE.Group(); torso.position.set(0,1.34,0); torso.rotation.y = -.38; character.add(torso);
-      meshWithMaterial(new THREE.IcosahedronGeometry(.58,1), riderMaterials.jacket, torso, [0,.18,0], [.75,1.18,.66]);
+      meshWithMaterial(new THREE.DodecahedronGeometry(.58,0), riderMaterials.jacket, torso, [0,.18,0], [.78,1.20,.68]);
+      meshWithMaterial(new THREE.CylinderGeometry(.44,.56,.38,6,1,false), riderMaterials.jacketShadow, torso, [0,-.28,0], [.82,1,.72]);
       const armL = new THREE.Group(), armR = new THREE.Group();
       armL.position.set(-.48,.40,0); armR.position.set(.48,.40,0); torso.add(armL,armR);
-      meshWithMaterial(new THREE.CapsuleGeometry(.09,.68,3,6), riderMaterials.jacket, armL, [-.18,-.1,0], [1,1,1], [0,0,-1.05]);
-      meshWithMaterial(new THREE.CapsuleGeometry(.09,.68,3,6), riderMaterials.jacket, armR, [.18,-.1,0], [1,1,1], [0,0,1.05]);
-      meshWithMaterial(new THREE.SphereGeometry(.105,8,5), riderMaterials.skin, armL, [-.48,-.42,0], [1,1,1]);
-      meshWithMaterial(new THREE.SphereGeometry(.105,8,5), riderMaterials.skin, armR, [.48,-.42,0], [1,1,1]);
+      meshWithMaterial(new THREE.BoxGeometry(.20,.76,.20), riderMaterials.jacket, armL, [-.18,-.1,0], [1,1,1], [0,0,-1.05]);
+      meshWithMaterial(new THREE.BoxGeometry(.20,.76,.20), riderMaterials.jacket, armR, [.18,-.1,0], [1,1,1], [0,0,1.05]);
+      meshWithMaterial(new THREE.BoxGeometry(.19,.19,.19), riderMaterials.skin, armL, [-.48,-.42,0], [1,1,1]);
+      meshWithMaterial(new THREE.BoxGeometry(.19,.19,.19), riderMaterials.skin, armR, [.48,-.42,0], [1,1,1]);
       const head = new THREE.Group(); head.position.set(0,.92,0); torso.add(head);
-      meshWithMaterial(new THREE.SphereGeometry(.31,10,7), riderMaterials.helmet, head, [0,0,0], [1,1.03,1]);
+      meshWithMaterial(new THREE.DodecahedronGeometry(.32,0), riderMaterials.helmet, head, [0,0,0], [1,1.05,1]);
       meshWithMaterial(new THREE.BoxGeometry(.55,.16,.10), riderMaterials.goggles, head, [0,.02,.27], [1,1,1], [-.08,0,0]);
+      meshWithMaterial(new THREE.BoxGeometry(.10,.14,.40), riderMaterials.goggles, head, [-.28,.02,.04], [1,1,1]);
+      meshWithMaterial(new THREE.BoxGeometry(.10,.14,.40), riderMaterials.goggles, head, [.28,.02,.04], [1,1,1]);
       scene.add(root);
       root.traverse(object => { if (object.isMesh) object.castShadow = true; });
       return { root, boardTilt, character, torso, armL, armR, leftLeg, rightLeg, board };
@@ -1367,9 +1398,9 @@
     }
 
     const pickupMaterials = {
-      orb: new THREE.MeshStandardMaterial({ color: CONFIG.colors.cyan, emissive: CONFIG.colors.cyan, emissiveIntensity: 3.4, roughness: .22, metalness: .08, flatShading: true }),
-      boost: new THREE.MeshStandardMaterial({ color: CONFIG.colors.gold, emissive: 0xE88720, emissiveIntensity: 3.8, roughness: .25, metalness: .15, flatShading: true }),
-      shield: new THREE.MeshStandardMaterial({ color: CONFIG.colors.shield, emissive: 0x9EDFFF, emissiveIntensity: 3.0, roughness: .18, metalness: .12, flatShading: true })
+      orb: new THREE.MeshStandardMaterial({ color: CONFIG.colors.cyan, emissive: CONFIG.colors.cyan, emissiveIntensity: 1.65, roughness: .26, metalness: .08, flatShading: true }),
+      boost: new THREE.MeshStandardMaterial({ color: CONFIG.colors.gold, emissive: 0xE88720, emissiveIntensity: 2.45, roughness: .25, metalness: .15, flatShading: true }),
+      shield: new THREE.MeshStandardMaterial({ color: CONFIG.colors.shield, emissive: 0x9EDFFF, emissiveIntensity: 2.0, roughness: .18, metalness: .12, flatShading: true })
     };
     const pickupMeshes = {
       orb: new THREE.InstancedMesh(new THREE.IcosahedronGeometry(.28, 1), pickupMaterials.orb, world.slots.length * CONFIG.pickups.slotsPerChunk),
@@ -1543,7 +1574,7 @@
           blending: THREE.NormalBlending, polygonOffset: true, polygonOffsetFactor: -2,
           uniforms: { time: { value: 0 }, life: { value: CONFIG.effects.trailLife } },
           vertexShader: `attribute float birth; varying float vAge; uniform float time; uniform float life; void main(){vAge=clamp(1.0-(time-birth)/life,0.0,1.0);gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,
-          fragmentShader: `varying float vAge; void main(){float a=smoothstep(0.0,.18,vAge)*.48;gl_FragColor=vec4(.48,.77,.98,a);}`
+          fragmentShader: `varying float vAge; void main(){float a=smoothstep(0.0,.18,vAge)*.27;gl_FragColor=vec4(.15,.36,.52,a);}`
         });
         this.mesh = new THREE.Mesh(geometry,material); this.mesh.frustumCulled=false; scene.add(this.mesh);
         this.cursor=0; this.hasLast=false; this.lastCenter=new THREE.Vector3(); this.lastLeft=new THREE.Vector3(); this.lastRight=new THREE.Vector3();
@@ -1554,7 +1585,7 @@
       emit(position, yaw, edge) {
         const moved = this.hasLast ? position.distanceToSquared(this.lastCenter) : 1;
         if (this.hasLast && moved < .018) return;
-        const width = lerp(.085,.285,Math.abs(edge)/CONFIG.physics.edgeMax);
+        const width = lerp(.075,.255,Math.abs(edge)/CONFIG.physics.edgeMax);
         const sx = Math.cos(yaw), sz = -Math.sin(yaw);
         const leftX = position.x - sx*width, leftZ=position.z-sz*width;
         const rightX=position.x+sx*width, rightZ=position.z+sz*width;
@@ -1616,23 +1647,68 @@
     }
     const snowfall=createSnowfall();
 
-    function createRidge(distance, seed, baseColor, snowColor, segments=44) {
-      const rng=mulberry32(seed);const positions=[],colors=[];const rock=new THREE.Color(baseColor),snow=new THREE.Color(snowColor),haze=new THREE.Color(CONFIG.renderer.fogColor);
-      for(let i=0;i<segments;i++){
-        const x0=lerp(-820,820,i/segments),x1=lerp(-820,820,(i+1)/segments);
-        const peak0=44+Math.abs(fbm(i*.28,seed*.001,seed))*105+rng()*12;
-        const peak1=44+Math.abs(fbm((i+1)*.28,seed*.001,seed))*105+rng()*12;
-        const verts=[x0,-45,0,x1,-45,0,x0,peak0,0,x0,peak0,0,x1,-45,0,x1,peak1,0];positions.push(...verts);
-        const jitter=.82+rng()*.23;
-        for(let v=0;v<6;v++){
-          const y=verts[v*3+1];const src=y>78?snow:rock;colorScratch.copy(src).multiplyScalar(jitter).lerp(haze,distance/1000*.48);colors.push(colorScratch.r,colorScratch.g,colorScratch.b);
-        }
+    function createMountainRidge(distance, seed, baseColor, snowColor, heightScale=1) {
+      const cfg=CONFIG.scenery,rng=mulberry32(seed),segments=cfg.ridgeSegments,rows=cfg.ridgeRows;
+      const positions=[],colors=[],summits=new Float32Array(segments+1),peaks=[];
+      const rock=new THREE.Color(baseColor),snow=new THREE.Color(snowColor),haze=new THREE.Color(CONFIG.renderer.fogColor);
+      for(let i=0;i<cfg.ridgePeaks;i++)peaks.push({center:rng()*segments,width:2.8+rng()*7.2,height:(cfg.ridgeMinHeight+cfg.ridgeHeightRange*(.46+rng()*.54))*heightScale});
+      for(let i=0;i<=segments;i++){
+        let height=cfg.ridgeMinHeight*.58*heightScale;
+        for(let p=0;p<peaks.length;p++)height=Math.max(height,peaks[p].height*Math.max(0,1-Math.abs(i-peaks[p].center)/peaks[p].width));
+        summits[i]=height+Math.abs(fbm(i*.31,seed*.0007,seed+19))*24*heightScale;
       }
-      const geometry=new THREE.BufferGeometry();geometry.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));geometry.setAttribute('color',new THREE.Float32BufferAttribute(colors,3));geometry.computeVertexNormals();
-      const mesh=new THREE.Mesh(geometry,new THREE.MeshBasicMaterial({vertexColors:true,flatShading:true,fog:false,side:THREE.DoubleSide,depthWrite:false}));mesh.userData.distance=distance;mesh.layers.set(2);scene.add(mesh);return mesh;
+      const point=(column,row)=>{
+        const across=column/segments,depth=row/(rows-1),profile=.34+.66*Math.sin(depth*Math.PI);
+        const x=lerp(-cfg.ridgeSpan*.5,cfg.ridgeSpan*.5,across);
+        const z=(depth-.28)*cfg.ridgeDepth;
+        const facet=fbm(column*.23,row*.71,seed+87)*9*heightScale;
+        return [x,cfg.ridgeFloor+summits[column]*profile+facet,z];
+      };
+      const addTriangle=(a,b,c,faceIndex,forceRock=false)=>{
+        positions.push(...a,...b,...c);
+        const averageY=(a[1]+b[1]+c[1])/3;
+        const snowMix=forceRock?0:smoothstep(cfg.ridgeSnowLine-22,cfg.ridgeSnowLine+24,averageY);
+        const jitter=.70+hash2(faceIndex,seed,seed+311)*.28;
+        colorScratch.copy(rock).lerp(snow,snowMix).multiplyScalar(lerp(jitter,.94,snowMix)).lerp(haze,clamp(distance/1050*.44,.12,.38));
+        for(let v=0;v<3;v++)colors.push(colorScratch.r,colorScratch.g,colorScratch.b);
+      };
+      let face=0;
+      for(let row=0;row<rows-1;row++)for(let column=0;column<segments;column++){
+        const a=point(column,row),b=point(column+1,row),c=point(column,row+1),d=point(column+1,row+1);
+        if((column+row)&1){addTriangle(a,d,b,face++);addTriangle(a,c,d,face++);}else{addTriangle(a,c,b,face++);addTriangle(b,c,d,face++);}
+      }
+      const skirtY=cfg.ridgeFloor-82;
+      for(let column=0;column<segments;column++){
+        const a=point(column,0),b=point(column+1,0),c=[a[0],skirtY,a[2]],d=[b[0],skirtY,b[2]];
+        addTriangle(a,c,b,face++,true);addTriangle(b,c,d,face++,true);
+      }
+      const geometry=new THREE.BufferGeometry();geometry.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));geometry.setAttribute('color',new THREE.Float32BufferAttribute(colors,3));geometry.computeVertexNormals();geometry.computeBoundingSphere();
+      const material=new THREE.MeshBasicMaterial({vertexColors:true,fog:false,side:THREE.DoubleSide,depthWrite:true});
+      const mesh=new THREE.Mesh(geometry,material);mesh.userData.distance=distance;mesh.userData.baseLift=cfg.ridgeBaseLift;mesh.layers.set(2);scene.add(mesh);return mesh;
     }
-    const ridges=[createRidge(680,CONFIG.seed+61,0x7B92A8,0xDCEBFA),createRidge(470,CONFIG.seed+43,0x60788C,0xCFDFED)];
-    const forestBand=createRidge(330,CONFIG.seed+22,0x23493B,0x5E7F76,70);forestBand.scale.y=.25;
+
+    function createDistantForest(distance,seed) {
+      const cfg=CONFIG.scenery,rng=mulberry32(seed),positions=[],colors=[];
+      const green=new THREE.Color(0x173D35),snow=new THREE.Color(0x466C65),haze=new THREE.Color(CONFIG.renderer.fogColor);
+      const addTriangle=(a,b,c,color)=>{positions.push(...a,...b,...c);for(let v=0;v<3;v++)colors.push(color.r,color.g,color.b);};
+      for(let i=0;i<cfg.forestCount;i++){
+        const x=lerp(-cfg.forestSpan*.5,cfg.forestSpan*.5,(i+rng()*.72)/cfg.forestCount),z=randRange(rng,-28,28);
+        const h=randRange(rng,cfg.forestHeightMin,cfg.forestHeightMax),w=h*randRange(rng,.18,.28);
+        colorScratch.copy(green).multiplyScalar(randRange(rng,.72,1.02)).lerp(haze,.22);
+        addTriangle([x-w,0,z],[x+w,0,z],[x,h,z],colorScratch);
+        colorScratch.copy(snow).multiplyScalar(randRange(rng,.84,1.02)).lerp(haze,.18);
+        addTriangle([x-w*.48,h*.55,z-.08],[x+w*.48,h*.55,z-.08],[x,h*.86,z-.08],colorScratch);
+      }
+      const geometry=new THREE.BufferGeometry();geometry.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));geometry.setAttribute('color',new THREE.Float32BufferAttribute(colors,3));geometry.computeVertexNormals();geometry.computeBoundingSphere();
+      const mesh=new THREE.Mesh(geometry,new THREE.MeshBasicMaterial({vertexColors:true,fog:false,side:THREE.DoubleSide,depthWrite:true}));mesh.userData.distance=distance;mesh.userData.baseLift=cfg.forestBaseLift;mesh.layers.set(2);scene.add(mesh);return mesh;
+    }
+
+    const distantScenery=[
+      createMountainRidge(CONFIG.scenery.ridgeFarDistance,CONFIG.seed+61,0x778EA4,0xD5E4F1,1.32),
+      createMountainRidge(CONFIG.scenery.ridgeMidDistance,CONFIG.seed+43,0x536D82,0xC9DBEB,1.13),
+      createMountainRidge(CONFIG.scenery.ridgeNearDistance,CONFIG.seed+27,0x3F5E72,0xBCD2E5,.94),
+      createDistantForest(CONFIG.scenery.forestDistance,CONFIG.seed+22)
+    ];
 
     function createCloudTexture() {
       const canvas=document.createElement('canvas');canvas.width=512;canvas.height=128;const ctx=canvas.getContext('2d');const rng=mulberry32(CONFIG.seed^0xC10D);
@@ -1731,7 +1807,7 @@
     }
 
     const UberAShader={
-      uniforms:{tDiffuse:{value:null},tDepth:{value:depthTarget.texture},tGodRays:{value:godRayTarget.texture},resolution:{value:new THREE.Vector2(renderWidth,renderHeight)},cameraNear:{value:camera.near},cameraFar:{value:camera.far},dofEnabled:{value:state.dofEnabled?1:0},godRays:{value:0},sunPos:{value:sunScreen},speed:{value:0},boost:{value:0},time:{value:0}},
+      uniforms:{tDiffuse:{value:null},tDepth:{value:null},tGodRays:{value:null},resolution:{value:new THREE.Vector2(renderWidth,renderHeight)},cameraNear:{value:camera.near},cameraFar:{value:camera.far},dofEnabled:{value:state.dofEnabled?1:0},godRays:{value:0},sunPos:{value:sunScreen},speed:{value:0},boost:{value:0},time:{value:0}},
       vertexShader:`varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,
       fragmentShader:`
         varying vec2 vUv;uniform sampler2D tDiffuse;uniform sampler2D tDepth;uniform sampler2D tGodRays;uniform vec2 resolution;uniform float cameraNear;uniform float cameraFar;uniform float dofEnabled;uniform float godRays;uniform vec2 sunPos;uniform float speed;uniform float boost;uniform float time;
@@ -1761,7 +1837,7 @@
     const composer=new EffectComposer(renderer);
     const renderPass=new RenderPass(scene,camera);composer.addPass(renderPass);
     const bloomPass=new UnrealBloomPass(new THREE.Vector2(renderWidth,renderHeight),CONFIG.effects.bloomStrength,CONFIG.effects.bloomRadius,CONFIG.effects.bloomThreshold);bloomPass.threshold=CONFIG.effects.bloomThreshold;composer.addPass(bloomPass);
-    const uberAPass=new ShaderPass(UberAShader);composer.addPass(uberAPass);
+    const uberAPass=new ShaderPass(UberAShader);uberAPass.uniforms.tDepth.value=depthTarget.texture;uberAPass.uniforms.tGodRays.value=godRayTarget.texture;composer.addPass(uberAPass);
     const outputPass=new OutputPass();composer.addPass(outputPass);
     const uberBPass=new ShaderPass(UberBShader);composer.addPass(uberBPass);
     const smaaPass=new SMAAPass(renderWidth,renderHeight);composer.addPass(smaaPass);
@@ -1923,10 +1999,10 @@
       if(state.mode==='RUNNING'&&rider.grounded&&speed>CONFIG.effects.trailMinSpeed){
         trail.emit(rider.position,rider.yaw,rider.edge);
         const intensity=smoothstep(5,28,speed)*(.22+.78*edge01)*(.45+.55*smoothstep(.2,3,slip));
-        sprayAccumulator+=dt*lerp(16,148,intensity);powderAccumulator+=dt*lerp(5,32,smoothstep(10,34,speed)*(.35+.65*edge01));
-        const sideSign=Math.sign(rider.edge)||1,sx=Math.cos(rider.yaw)*sideSign,sz=-Math.sin(rider.yaw)*sideSign,bx=rider.position.x-Math.sin(rider.yaw)*.72+sx*.28,bz=rider.position.z-Math.cos(rider.yaw)*.72+sz*.28,by=heightAt(bx,bz)+.12;
-        while(sprayAccumulator>=1){sprayAccumulator--;sprayPool.emit(bx,by,bz,sx*randRange(fxRng,1.8,4.0)-rider.velocity.x*.13,randRange(fxRng,.8,2.4),sz*randRange(fxRng,1.8,4.0)-rider.velocity.z*.13,randRange(fxRng,.035,.12),randRange(fxRng,.25,.65),0xCDEEFF);}
-        while(powderAccumulator>=1){powderAccumulator--;powderPool.emit(bx,by,bz,rider.velocity.x*.55+sx*randRange(fxRng,.2,1.1),randRange(fxRng,.25,1.15),rider.velocity.z*.55+sz*randRange(fxRng,.2,1.1),randRange(fxRng,.25,.90),randRange(fxRng,.5,1.15),0xD7EAF7);}
+        sprayAccumulator+=dt*lerp(20,196,intensity);powderAccumulator+=dt*lerp(24,140,smoothstep(8,34,speed)*(.28+.72*edge01));
+        const sideSign=Math.sign(rider.edge)||1,sx=Math.cos(rider.yaw)*sideSign,sz=-Math.sin(rider.yaw)*sideSign,bx=rider.position.x-Math.sin(rider.yaw)*.72+sx*.28,bz=rider.position.z-Math.cos(rider.yaw)*.72+sz*.28,by=heightAt(bx,bz)+.22;
+        while(sprayAccumulator>=1){sprayAccumulator--;sprayPool.emit(bx,by,bz,sx*randRange(fxRng,2.0,4.8)-rider.velocity.x*.15,randRange(fxRng,.9,2.8),sz*randRange(fxRng,2.0,4.8)-rider.velocity.z*.15,randRange(fxRng,.045,.14),randRange(fxRng,.30,.76),0xCDEEFF);}
+        while(powderAccumulator>=1){powderAccumulator--;powderPool.emit(bx,by,bz,rider.velocity.x*.68+sx*randRange(fxRng,1.4,4.5),randRange(fxRng,1.0,3.1),rider.velocity.z*.68+sz*randRange(fxRng,1.4,4.5),randRange(fxRng,.68,1.78),randRange(fxRng,.82,1.72),0xAED8EF);}
       }
       trail.update();sprayPool.update(dt);powderPool.update(dt);rings.update(dt);
     }
@@ -1963,8 +2039,12 @@
       sky.position.copy(camera.position);snowfall.position.copy(camera.position);snowfall.material.uniforms.time.value=state.time;
       sunSprite.position.copy(camera.position).addScaledVector(sunDirection,620);haloSprite.position.copy(sunSprite.position);
       const shadowTexel=CONFIG.renderer.shadowBox/(IS_MOBILE?CONFIG.renderer.shadowMobile:CONFIG.renderer.shadowDesktop);const tx=Math.round(rider.position.x/shadowTexel)*shadowTexel,tz=Math.round(rider.position.z/shadowTexel)*shadowTexel,ty=rider.position.y;sunLight.target.position.set(tx,ty,tz);sunLight.position.set(tx+sunDirection.x*55,ty+sunDirection.y*55,tz+sunDirection.z*55);
-      for(let i=0;i<ridges.length;i++){const mesh=ridges[i],distance=mesh.userData.distance;mesh.position.set(camera.position.x,track.yAt(camera.position.z+distance)+24,camera.position.z+distance);}
-      forestBand.position.set(camera.position.x,track.yAt(camera.position.z+forestBand.userData.distance)+20,camera.position.z+forestBand.userData.distance);
+      const sceneryYaw=Math.atan2(cameraHeading.x,cameraHeading.z);
+      for(let i=0;i<distantScenery.length;i++){
+        const mesh=distantScenery[i],distance=mesh.userData.distance,anchorZ=camera.position.z+Math.max(.38,cameraHeading.z)*distance;
+        mesh.position.set(camera.position.x+cameraHeading.x*distance,track.yAt(anchorZ)+mesh.userData.baseLift,camera.position.z+cameraHeading.z*distance);
+        mesh.rotation.y=sceneryYaw;
+      }
       for(let i=0;i<clouds.length;i++){const cloud=clouds[i];cloud.position.set(camera.position.x+cloud.userData.offset+Math.sin(state.time*.015+i)*32,camera.position.y+92+i*13,camera.position.z+150+i*78+state.time*cloud.userData.speed%220);}
       if(++shadowFrame%2===0)shadowDue=true;
       world.update(rider.position.z);pickupSystem.update(dt);
