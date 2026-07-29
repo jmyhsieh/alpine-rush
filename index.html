@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
   <meta name="theme-color" content="#2e6fd1">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%232e6fd1'/%3E%3Cpath d='M8 50 27 15l10 18 7-11 12 28Z' fill='%23f2f6ff'/%3E%3Cpath d='m22 50 10-18 10 18Z' fill='%23e8552d'/%3E%3C/svg%3E">
   <title>ALPINE RUSH</title>
   <style>
     :root {
@@ -356,6 +357,7 @@
         assistStart: 12, assistEnd: 24, assistRate: 1.35, boundaryStart: 21, boundaryForce: 8.5,
         stuckSpeed: 3.5, stuckSeconds: 2.2, respawnGrace: 1.2,
         takeoffGapVelocity: 2.6, popVelocity: 4.9, riderHeight: 0.48,
+        surfaceVerticalLimit: 12, terminalVelocity: 55,
         airTurnRate: 1.15, spinRate: THREE.MathUtils.degToRad(720), spinRamp: 0.25,
         cleanLandingAngle: THREE.MathUtils.degToRad(50), switchAngle: THREE.MathUtils.degToRad(130),
         hardLandingVelocity: 5.2, tumbleSeconds: 1.5, tumbleSpeedFactor: 0.4
@@ -567,10 +569,9 @@
         const cx = track.xAt(s);
         const xm = track.xAt(s - h), xp = track.xAt(s + h);
         const dx = (xp - xm) / (2 * h);
-        const ddx = (xp - 2 * cx + xm) / (h * h);
         const f = (cx - x) * dx + (s - z);
-        const fp = Math.max(1e-5, dx * dx + (cx - x) * ddx + 1);
-        s -= f / fp;
+        const step = clamp(f / (dx * dx + 1), -CONFIG.track.pointSpacing * .5, CONFIG.track.pointSpacing * .5);
+        s = clamp(s - step, z - CONFIG.terrain.worldHalf, z + CONFIG.terrain.worldHalf);
       }
       const cx = track.xAt(s);
       const dx = (track.xAt(s + h) - track.xAt(s - h)) / (2 * h);
@@ -990,7 +991,6 @@
 
     const decorMaterial = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.88, metalness: 0, flatShading: true });
     const snowMaterial = new THREE.MeshStandardMaterial({ color: CONFIG.colors.snow, vertexColors: true, roughness: CONFIG.terrain.snowRoughness, metalness: 0, flatShading: false });
-    snowMaterial.extensions.derivatives = true;
     snowMaterial.onBeforeCompile = shader => {
       shader.vertexShader = shader.vertexShader
         .replace('#include <common>', `#include <common>\nattribute float lateral; varying float vLateral; varying vec3 vSnowWorld;`)
@@ -1844,6 +1844,7 @@
     function beginAir(pop=false) {
       rider.grounded=false;state.ride='AIRBORNE';rider.airTime=0;rider.spinAccum=0;rider.spinSign=0;rider.grabTime=0;rider.takeoffCooldown=.16;rider.position.y+=.07;
       if(pop)rider.velocity.addScaledVector(rider.normal,CONFIG.physics.popVelocity);
+      rider.velocity.y=clamp(rider.velocity.y,-CONFIG.physics.terminalVelocity,CONFIG.physics.surfaceVerticalLimit);
       audio.whoosh();logEvent('TAKEOFF',pop?'pop':'terrain');
     }
 
@@ -1883,7 +1884,7 @@
       if(state.mode!=='RUNNING')return;
       state.runTime+=dt;state.boost=Math.max(0,state.boost-dt);if(state.comboLeft>0){state.comboLeft-=dt;if(state.comboLeft<=0)resetCombo();}
       const steer=currentSteer(),spin=currentSpin();input.steer=steer;input.spin=spin;input.tuck=input.keys.has('KeyW')||input.keys.has('ShiftLeft')||input.keys.has('ShiftRight');input.grab=input.keys.has('KeyS');
-      const course=courseCoords(rider.position.x,rider.position.z),progress=clamp(state.distance/CONFIG.physics.progressionDistance,0,1),trackDir=track.dirAt(course.s,dirScratch),trackYaw=Math.atan2(trackDir.x,trackDir.z);
+      const course=courseCoords(rider.position.x,rider.position.z),progress=clamp(state.distance/CONFIG.physics.progressionDistance,0,1),speedCap=lerp(CONFIG.physics.maxSpeed/(1+CONFIG.physics.progressionGain),CONFIG.physics.maxSpeed,progress),trackDir=track.dirAt(course.s,dirScratch),trackYaw=Math.atan2(trackDir.x,trackDir.z);
       state.maxCourseZ=Math.max(state.maxCourseZ,course.s);state.distance=Math.max(0,state.maxCourseZ-state.startZ);
 
       if(rider.grounded){
@@ -1897,17 +1898,18 @@
         forwardSpeed-=Math.sign(forwardSpeed)*Math.min(Math.abs(forwardSpeed),CONFIG.physics.friction*dt);const drag=CONFIG.physics.quadraticDrag*lerp(1,.65,progress)*(input.tuck?CONFIG.physics.tuckDragFactor:1);forwardSpeed-=Math.sign(forwardSpeed)*drag*forwardSpeed*forwardSpeed*dt;forwardSpeed-=CONFIG.physics.carveScrub*Math.pow(edge01,1.6)*Math.max(0,forwardSpeed)*dt;
         if(state.boost>0)forwardSpeed+=CONFIG.physics.boostAcceleration*dt;
         const floor=lerp(CONFIG.physics.floorStart,CONFIG.physics.floorEnd,clamp(state.distance/CONFIG.physics.floorDistance,0,1));forwardSpeed+=Math.min(Math.max(0,floor-forwardSpeed),CONFIG.physics.floorAcceleration*dt);
-        const cap=lerp(CONFIG.physics.maxSpeed/(1+CONFIG.physics.progressionGain),CONFIG.physics.maxSpeed,progress);forwardSpeed=Math.min(forwardSpeed,cap);
-        if(Math.abs(course.lateral)>CONFIG.physics.boundaryStart){const penetration=Math.abs(course.lateral)-CONFIG.physics.boundaryStart;lateralSpeed-=Math.sign(course.lateral)*CONFIG.physics.boundaryForce*penetration*penetration*dt;}
+        forwardSpeed=Math.min(forwardSpeed,speedCap);
+        if(Math.abs(course.lateral)>CONFIG.physics.boundaryStart){const side=Math.sign(course.lateral),penetration=Math.abs(course.lateral)-CONFIG.physics.boundaryStart,boundaryAcceleration=Math.min(CONFIG.physics.lateralAccelLimit,CONFIG.physics.boundaryForce*penetration*penetration),outwardSpeed=lateralSpeed*side,boundaryImpulse=Math.min(boundaryAcceleration*dt,Math.max(0,outwardSpeed+CONFIG.physics.authoritySpeed));lateralSpeed-=side*boundaryImpulse;}
         state.boundary=smoothstep(CONFIG.physics.boundaryStart,CONFIG.physics.assistEnd,Math.abs(course.lateral));
         rider.velocity.copy(physicsForward).multiplyScalar(forwardSpeed).addScaledVector(physicsRight,lateralSpeed);
-        const oldGround=sample.height;rider.position.x+=rider.velocity.x*dt;rider.position.z+=rider.velocity.z*dt;const newGround=heightAt(rider.position.x,rider.position.z),followVy=(newGround-oldGround)/dt,ballisticVy=rider.surfaceVy-CONFIG.physics.gravity*dt;
+        const horizontalSpeed=Math.hypot(rider.velocity.x,rider.velocity.z);if(horizontalSpeed>speedCap){const scale=speedCap/horizontalSpeed;rider.velocity.x*=scale;rider.velocity.z*=scale;}
+        const oldGround=sample.height;rider.position.x+=rider.velocity.x*dt;rider.position.z+=rider.velocity.z*dt;const newGround=heightAt(rider.position.x,rider.position.z),followVy=clamp((newGround-oldGround)/dt,-CONFIG.physics.surfaceVerticalLimit,CONFIG.physics.surfaceVerticalLimit),ballisticVy=rider.surfaceVy-CONFIG.physics.gravity*dt;
         if(input.jumpQueued){input.jumpQueued=false;rider.position.y=newGround+CONFIG.physics.riderHeight;beginAir(true);}
         else if(rider.takeoffCooldown<=0&&followVy<ballisticVy-CONFIG.physics.takeoffGapVelocity){rider.velocity.y=lerp(ballisticVy,rider.surfaceVy,.22);rider.position.y=oldGround+CONFIG.physics.riderHeight;beginAir(false);}
         else{rider.position.y=newGround+CONFIG.physics.riderHeight;rider.velocity.y=followVy;rider.surfaceVy=followVy;rider.boardYaw=rider.yaw+(rider.stance<0?Math.PI:0);}
         speed=Math.hypot(rider.velocity.x,rider.velocity.z);if(speed<CONFIG.physics.stuckSpeed)rider.lowSpeedTime+=dt;else rider.lowSpeedTime=0;if(rider.lowSpeedTime>CONFIG.physics.stuckSeconds)respawn();
       }else{
-        rider.edge=lerp(rider.edge,steer*CONFIG.physics.edgeMax,expEase(3.2,dt));const turn=steer*CONFIG.physics.airTurnRate*dt,c=Math.cos(turn),s=Math.sin(turn),vx=rider.velocity.x,vz=rider.velocity.z;rider.velocity.x=vx*c+vz*s;rider.velocity.z=-vx*s+vz*c;if(state.boost>0){const hs=Math.max(.001,Math.hypot(rider.velocity.x,rider.velocity.z));rider.velocity.x+=rider.velocity.x/hs*CONFIG.physics.boostAcceleration*.45*dt;rider.velocity.z+=rider.velocity.z/hs*CONFIG.physics.boostAcceleration*.45*dt;}rider.velocity.y-=CONFIG.physics.gravity*dt;rider.airTime+=dt;
+        rider.edge=lerp(rider.edge,steer*CONFIG.physics.edgeMax,expEase(3.2,dt));const turn=steer*CONFIG.physics.airTurnRate*dt,c=Math.cos(turn),s=Math.sin(turn),vx=rider.velocity.x,vz=rider.velocity.z;rider.velocity.x=vx*c+vz*s;rider.velocity.z=-vx*s+vz*c;if(state.boost>0){const hs=Math.max(.001,Math.hypot(rider.velocity.x,rider.velocity.z));rider.velocity.x+=rider.velocity.x/hs*CONFIG.physics.boostAcceleration*.45*dt;rider.velocity.z+=rider.velocity.z/hs*CONFIG.physics.boostAcceleration*.45*dt;}const horizontalSpeed=Math.hypot(rider.velocity.x,rider.velocity.z);if(horizontalSpeed>speedCap){const scale=speedCap/horizontalSpeed;rider.velocity.x*=scale;rider.velocity.z*=scale;}rider.velocity.y=Math.max(-CONFIG.physics.terminalVelocity,rider.velocity.y-CONFIG.physics.gravity*dt);rider.airTime+=dt;
         if(spin){const delta=spin*CONFIG.physics.spinRate*smoothstep(0,CONFIG.physics.spinRamp,rider.airTime)*dt;rider.boardYaw+=delta;rider.spinAccum+=delta;rider.spinSign=spin;}else{const flightYaw=Math.atan2(rider.velocity.x,rider.velocity.z),nearest=flightYaw+Math.round((rider.boardYaw-flightYaw)/Math.PI)*Math.PI;rider.boardYaw=lerpAngle(rider.boardYaw,nearest,expEase(3.5,dt));}
         if(input.grab)rider.grabTime+=dt;rider.position.addScaledVector(rider.velocity,dt);const sample=getHeightAndNormal(rider.position.x,rider.position.z);const groundVy=(-sample.normal.x/sample.normal.y)*rider.velocity.x+(-sample.normal.z/sample.normal.y)*rider.velocity.z;
         if(rider.airTime>.12&&rider.position.y<=sample.height+CONFIG.physics.riderHeight&&rider.velocity.y<=groundVy){const travelYaw=Math.atan2(rider.velocity.x,rider.velocity.z),error=Math.abs(wrapAngle(rider.boardYaw-travelYaw)),isSwitch=error>=CONFIG.physics.switchAngle,clean=error<=CONFIG.physics.cleanLandingAngle||isSwitch,impact=Math.max(0,groundVy-rider.velocity.y);rider.position.y=sample.height+CONFIG.physics.riderHeight;if(clean){rider.grounded=true;state.ride='GROUNDED';rider.stance=isSwitch?-1:1;rider.yaw=travelYaw;rider.boardYaw=travelYaw+(isSwitch?Math.PI:0);rider.velocity.y=groundVy;rider.surfaceVy=groundVy;rider.normal.copy(sample.normal);scoreLanding(isSwitch,impact);}else fatalContact('landing');}
