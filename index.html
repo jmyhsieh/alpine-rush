@@ -291,6 +291,7 @@
     import { SMAAPass } from 'three/addons/postprocessing/SMAAPass.js';
     import { FullScreenQuad } from 'three/addons/postprocessing/Pass.js';
     import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+    import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
     const CONFIG = Object.freeze({
       seed: 1337,
@@ -337,6 +338,14 @@
         obstacleStartChunk: 3, obstacleRampChunks: 34, obstacleMax: 4,
         heroChance: 0.56, logChance: 0.075, pisteRockChance: 0.18,
         fullLod: 220, mediumLod: 460, aoRadius: 8.2, aoStrength: 0.38
+      },
+      assets: {
+        basePath: './assets/kaykit-forest/', loadTimeoutMs: 8000,
+        treeFiles: ['Tree_4_A_Color1.gltf', 'Tree_4_B_Color1.gltf', 'Tree_4_C_Color1.gltf'],
+        treeTargetHeights: [5.25, 5.65, 6.15], treeSnowStrength: 0.82,
+        rockFile: 'Rock_1_J_Color1.gltf', rockTargetHeight: 1.45, rockSnowStrength: 0.74,
+        bushFile: 'Bush_2_D_Color1.gltf', bushTargetHeight: 0.72, bushSnowStrength: 0.88,
+        snowNormalMin: 0.18, snowNormalMax: 0.72
       },
       scenery: {
         ridgeNearDistance: 285, ridgeMidDistance: 480, ridgeFarDistance: 720,
@@ -1046,14 +1055,134 @@
     };
     snowMaterial.customProgramCacheKey = () => 'alpine-snow-r160-v3';
 
+    function loadGltfWithTimeout(loader, url) {
+      return new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => reject(new Error(`Timed out loading ${url}`)), CONFIG.assets.loadTimeoutMs);
+        loader.load(url, gltf => {
+          clearTimeout(timeout);
+          resolve(gltf);
+        }, undefined, error => {
+          clearTimeout(timeout);
+          reject(error instanceof Error ? error : new Error(`Failed to load ${url}`));
+        });
+      });
+    }
+
+    function texturePixels(texture) {
+      const image = texture?.image;
+      if (!image?.width || !image?.height) return null;
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = image.width; canvas.height = image.height;
+        const context = canvas.getContext('2d', { willReadFrequently: true });
+        context.drawImage(image, 0, 0);
+        texture.updateMatrix();
+        return { data: context.getImageData(0, 0, canvas.width, canvas.height).data, width: canvas.width, height: canvas.height, texture };
+      } catch (error) {
+        console.warn('ALPINE RUSH could not bake the asset texture; using its material color.', error);
+        return null;
+      }
+    }
+
+    function bakeAssetGeometry(gltf, targetHeight, snowStrength) {
+      gltf.scene.updateMatrixWorld(true);
+      let sourceMesh = null;
+      gltf.scene.traverse(child => { if (!sourceMesh && child.isMesh) sourceMesh = child; });
+      if (!sourceMesh) throw new Error('KayKit asset does not contain a mesh.');
+
+      const geometry = sourceMesh.geometry.clone();
+      geometry.applyMatrix4(sourceMesh.matrixWorld);
+      if (!geometry.getAttribute('normal')) geometry.computeVertexNormals();
+      geometry.computeBoundingBox();
+      const bounds = geometry.boundingBox;
+      const height = Math.max(0.001, bounds.max.y - bounds.min.y);
+      const centerX = (bounds.min.x + bounds.max.x) * 0.5;
+      const centerZ = (bounds.min.z + bounds.max.z) * 0.5;
+      geometry.translate(-centerX, -bounds.min.y, -centerZ);
+      geometry.scale(targetHeight / height, targetHeight / height, targetHeight / height);
+      geometry.computeVertexNormals();
+      geometry.computeBoundingBox();
+
+      const positions = geometry.getAttribute('position');
+      const normals = geometry.getAttribute('normal');
+      const uvs = geometry.getAttribute('uv');
+      const pixels = texturePixels(sourceMesh.material?.map);
+      const colors = new Float32Array(positions.count * 3);
+      const materialColor = sourceMesh.material?.color || new THREE.Color(0xffffff);
+      const sampledColor = new THREE.Color();
+      const snowColor = new THREE.Color(CONFIG.colors.rockSnow);
+      const uvScratch = new THREE.Vector2();
+      const bakedHeight = Math.max(0.001, geometry.boundingBox.max.y);
+
+      for (let i = 0; i < positions.count; i++) {
+        if (pixels && uvs) {
+          uvScratch.set(uvs.getX(i), uvs.getY(i));
+          pixels.texture.transformUv(uvScratch);
+          const px = clamp(Math.round(uvScratch.x * (pixels.width - 1)), 0, pixels.width - 1);
+          const py = clamp(Math.round(uvScratch.y * (pixels.height - 1)), 0, pixels.height - 1);
+          const offset = (py * pixels.width + px) * 4;
+          sampledColor.setRGB(pixels.data[offset] / 255, pixels.data[offset + 1] / 255, pixels.data[offset + 2] / 255, THREE.SRGBColorSpace);
+          sampledColor.multiply(materialColor);
+        } else sampledColor.copy(materialColor);
+
+        const upward = smoothstep(CONFIG.assets.snowNormalMin, CONFIG.assets.snowNormalMax, normals.getY(i));
+        const elevation = smoothstep(0.12, 0.58, positions.getY(i) / bakedHeight);
+        const snow = upward * lerp(0.68, 1, elevation) * snowStrength;
+        sampledColor.lerp(snowColor, snow);
+        colors[i * 3] = sampledColor.r;
+        colors[i * 3 + 1] = sampledColor.g;
+        colors[i * 3 + 2] = sampledColor.b;
+      }
+
+      geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+      geometry.deleteAttribute('uv');
+      geometry.deleteAttribute('uv1');
+      geometry.computeBoundingBox();
+      geometry.computeBoundingSphere();
+      return geometry;
+    }
+
+    async function loadVisualAssets() {
+      THREE.Cache.enabled = true;
+      const loader = new GLTFLoader();
+      const definitions = [
+        ...CONFIG.assets.treeFiles.map((file, index) => ({ type: 'tree', index, file, height: CONFIG.assets.treeTargetHeights[index], snow: CONFIG.assets.treeSnowStrength })),
+        { type: 'rock', index: 0, file: CONFIG.assets.rockFile, height: CONFIG.assets.rockTargetHeight, snow: CONFIG.assets.rockSnowStrength },
+        { type: 'bush', index: 0, file: CONFIG.assets.bushFile, height: CONFIG.assets.bushTargetHeight, snow: CONFIG.assets.bushSnowStrength }
+      ];
+      const library = { status: 'loading', source: 'KayKit Forest Nature Pack 1.0 FREE (CC0)', trees: [], rock: null, bush: null, loaded: [], failures: [] };
+      const results = await Promise.allSettled(definitions.map(definition => loadGltfWithTimeout(loader, CONFIG.assets.basePath + definition.file)));
+
+      for (let i = 0; i < results.length; i++) {
+        const result = results[i], definition = definitions[i];
+        if (result.status === 'fulfilled') {
+          try {
+            const geometry = bakeAssetGeometry(result.value, definition.height, definition.snow);
+            if (definition.type === 'tree') library.trees[definition.index] = geometry;
+            else library[definition.type] = geometry;
+            library.loaded.push(definition.file);
+          } catch (error) {
+            library.failures.push(`${definition.file}: ${error.message}`);
+          }
+        } else library.failures.push(`${definition.file}: ${result.reason?.message || result.reason}`);
+      }
+      library.status = library.loaded.length === definitions.length ? 'loaded' : library.loaded.length ? 'partial' : 'fallback';
+      if (library.failures.length) console.warn('ALPINE RUSH asset fallback active:', library.failures);
+      return library;
+    }
+
+    const visualAssets = await loadVisualAssets();
+
     const baseGeometries = {
       trees: [[], [], []], rocks: [], logs: [], bushes: []
     };
     for (let lod = 0; lod < 3; lod++) {
-      for (let variant = 0; variant < 3; variant++) baseGeometries.trees[lod][variant] = makePineGeometry(variant, lod);
-      baseGeometries.rocks[lod] = makeRockGeometry(lod);
+      for (let variant = 0; variant < 3; variant++) {
+        baseGeometries.trees[lod][variant] = lod < 2 && visualAssets.trees[variant] ? visualAssets.trees[variant] : makePineGeometry(variant, lod);
+      }
+      baseGeometries.rocks[lod] = lod < 2 && visualAssets.rock ? visualAssets.rock : makeRockGeometry(lod);
       baseGeometries.logs[lod] = makeLogGeometry(lod);
-      baseGeometries.bushes[lod] = makeBushGeometry(lod);
+      baseGeometries.bushes[lod] = lod === 0 && visualAssets.bush ? visualAssets.bush : makeBushGeometry(lod);
     }
     const redFlagGeometry = makeFlagGeometry(CONFIG.colors.redGate);
     const blueFlagGeometry = makeFlagGeometry(CONFIG.colors.blueGate);
@@ -2114,12 +2243,12 @@
       return hash.toString(16).padStart(8,'0');
     }
     function worldProbe(z,lateral=0){track.lateralFrame(z,centerScratch,sideScratch,dirScratch);const x=centerScratch.x+sideScratch.x*lateral,worldZ=z+sideScratch.z*lateral,sample=getHeightAndNormal(x,worldZ);return{x,y:sample.height,z:worldZ,lateral,normal:[sample.normal.x,sample.normal.y,sample.normal.z],curvature:track.curvature(z)};}
-    function debugSnapshot(){const course=courseCoords(rider.position.x,rider.position.z);return{ready:true,gameState:state.mode,rideState:state.ride,seed:CONFIG.seed,rider:{position:[rider.position.x,rider.position.y,rider.position.z],speed:Math.hypot(rider.velocity.x,rider.velocity.z),lateral:course.lateral,yaw:rider.yaw,boardYaw:rider.boardYaw,edge:rider.edge,grounded:rider.grounded,airTime:rider.airTime,spin:rider.spinAccum,grab:rider.grabTime,grace:rider.collisionGrace},run:{score:state.score,best:state.best,distance:state.distance,chain:state.chain,multiplier:state.multiplier,comboLeft:state.comboLeft,boost:state.boost,shield:state.shield},stream:{activeChunks:world.activeIndices(),rebuiltThisFrame:world.rebuiltThisFrame,poolSize:world.slots.length,pickupSlots:pickupSystem.records.length},quality:{tier:state.qualityTier,dpr:renderer.getPixelRatio(),dof:state.dofEnabled,godRays:state.godRaysEnabled,frameMsEma:state.frameMsEma,drawCalls:renderer.info.render.calls,triangles:renderer.info.render.triangles},audio:{created:!!audio.context,state:audio.context?.state||'not-created',activeShots:audio.activeShots,lastShot:audio.lastShot},lastEvent:state.lastEvent,events:state.events.slice()};}
+    function debugSnapshot(){const course=courseCoords(rider.position.x,rider.position.z);return{ready:true,gameState:state.mode,rideState:state.ride,seed:CONFIG.seed,assets:{status:visualAssets.status,source:visualAssets.source,loaded:visualAssets.loaded.slice(),failures:visualAssets.failures.slice()},rider:{position:[rider.position.x,rider.position.y,rider.position.z],speed:Math.hypot(rider.velocity.x,rider.velocity.z),lateral:course.lateral,yaw:rider.yaw,boardYaw:rider.boardYaw,edge:rider.edge,grounded:rider.grounded,airTime:rider.airTime,spin:rider.spinAccum,grab:rider.grabTime,grace:rider.collisionGrace},run:{score:state.score,best:state.best,distance:state.distance,chain:state.chain,multiplier:state.multiplier,comboLeft:state.comboLeft,boost:state.boost,shield:state.shield},stream:{activeChunks:world.activeIndices(),rebuiltThisFrame:world.rebuiltThisFrame,poolSize:world.slots.length,pickupSlots:pickupSystem.records.length},quality:{tier:state.qualityTier,dpr:renderer.getPixelRatio(),dof:state.dofEnabled,godRays:state.godRaysEnabled,frameMsEma:state.frameMsEma,drawCalls:renderer.info.render.calls,triangles:renderer.info.render.triangles},audio:{created:!!audio.context,state:audio.context?.state||'not-created',activeShots:audio.activeShots,lastShot:audio.lastShot},lastEvent:state.lastEvent,events:state.events.slice()};}
 
     const debugEnabled=new URLSearchParams(location.search).has('debug');
     const debugApi={snapshot:debugSnapshot,worldProbe,deterministicSignature};
     if(debugEnabled)Object.assign(debugApi,{pauseSimulation:value=>state.paused=!!value,step:(frames=1,dt=CONFIG.physics.fixedStep)=>{for(let i=0;i<frames;i++)physicsStep(dt);return debugSnapshot();},setInput:values=>{if(Number.isFinite(values.steer))input.touchSteer=clamp(values.steer,-1,1);if('tuck'in values){if(values.tuck)input.keys.add('KeyW');else input.keys.delete('KeyW');}if(Number.isFinite(values.spin)){input.touchSpin=values.spin!==0;input.lastTouchSteer=Math.sign(values.spin)||1;}if('grab'in values){if(values.grab)input.keys.add('KeyS');else input.keys.delete('KeyS');}},pulse:action=>{if(action==='jump')input.jumpQueued=true;else if(action==='respawn')respawn();},teleport:({distance=state.distance,lateral=0,heightOffset=0,speed=20,yawOffset=0}={})=>{const z=state.startZ+distance;track.lateralFrame(z,centerScratch,sideScratch,dirScratch);rider.position.set(centerScratch.x+sideScratch.x*lateral,heightAt(centerScratch.x+sideScratch.x*lateral,z+sideScratch.z*lateral)+CONFIG.physics.riderHeight+heightOffset,z+sideScratch.z*lateral);rider.yaw=Math.atan2(dirScratch.x,dirScratch.z)+yawOffset;rider.boardYaw=rider.yaw;rider.velocity.set(Math.sin(rider.yaw)*speed,0,Math.cos(rider.yaw)*speed);rider.grounded=heightOffset<=0;state.ride=rider.grounded?'GROUNDED':'AIRBORNE';world.update(rider.position.z);return debugSnapshot();},grant:kind=>{if(kind==='boost')state.boost=CONFIG.pickups.boostSeconds;else if(kind==='shield')state.shield=true;else award(CONFIG.pickups.orbScore,'ORB');return debugSnapshot();},collide:kind=>{fatalContact(kind);return debugSnapshot();},forceGate:outcome=>{if(outcome==='pass')award(CONFIG.pickups.gateScore,'GATE');else{resetCombo();popup('GATE MISSED','bad');}return debugSnapshot();},forceQualityStep:()=>{stepQuality();return debugSnapshot();}});
-    window.__ALPINE_DEBUG__=debugApi;window.__ALPINE_CONFIG__=CONFIG;
+    window.__ALPINE_DEBUG__=debugApi;window.__ALPINE_CONFIG__=CONFIG;window.__ALPINE_ASSETS__=visualAssets;
 
     initialRiderPose();camera.position.set(rider.position.x+CONFIG.camera.menuRadius,rider.position.y+CONFIG.camera.menuHeight,rider.position.z);camera.lookAt(rider.position);resizeRendering();document.body.dataset.gameState='menu';
     try{renderer.compile(scene,camera);}catch(error){showError(error.stack||error.message);}

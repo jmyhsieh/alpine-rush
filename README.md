@@ -20,4 +20,6 @@
 
 ## 技術
 
-遊戲本體完整包含在單一 [`index.html`](./index.html) 中，Three.js 由 jsDelivr CDN 載入，不需要建置步驟。
+遊戲邏輯與 shader 完整包含在單一 [`index.html`](./index.html) 中，Three.js 由 jsDelivr CDN 載入，不需要建置步驟。
+
+雪場植被與岩石使用 KayKit Forest Nature Pack 的少量 CC0 glTF 資產，從同一個 GitHub Pages 網站載入；如果資產載入失敗，會自動使用程序生成模型。來源與授權紀錄見 [`ASSETS.md`](./ASSETS.md)。
