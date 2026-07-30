@@ -166,6 +166,35 @@
     #ride-cta { margin-top: 31px; font-size: 13px; font-weight: 950; letter-spacing: 4px; animation: ctaPulse 1.35s ease-in-out infinite; }
     @keyframes ctaPulse { 50% { opacity: .52; transform: translateY(3px); } }
 
+    #gyro-controls {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      margin: 24px auto -8px;
+      cursor: default;
+    }
+    #gyro-actions { display: flex; justify-content: center; flex-wrap: wrap; gap: 7px; }
+    .gyro-button {
+      min-height: 38px;
+      padding: 8px 13px;
+      border: 1px solid var(--glass-line);
+      border-radius: 999px;
+      color: white;
+      background: var(--glass);
+      box-shadow: inset 0 1px rgba(255,255,255,.18), 0 8px 28px rgba(20,54,94,.12);
+      backdrop-filter: blur(12px);
+      font: 850 10px/1 inherit;
+      letter-spacing: 1px;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .gyro-button.primary { border-color: rgba(79,216,255,.62); background: rgba(79,216,255,.17); }
+    .gyro-button[aria-pressed="true"] { border-color: rgba(244,185,61,.7); background: rgba(244,185,61,.2); }
+    .gyro-button:disabled { cursor: default; opacity: .42; }
+    .gyro-button:active:not(:disabled) { transform: scale(.95); }
+    #gyro-status { min-height: 13px; font-size: 9px; font-weight: 800; letter-spacing: 1.4px; opacity: .72; }
+
     #touch-ui { position: fixed; inset: 0; z-index: 10; pointer-events: none; display: none; }
     .touch-button {
       position: absolute;
@@ -188,6 +217,31 @@
     .touch-button.pressed { transform: scale(.9); background: rgba(255,255,255,.3); }
     #jump-button { left: max(18px, env(safe-area-inset-left)); }
     #spin-button { right: max(18px, env(safe-area-inset-right)); }
+    #gyro-live-calibrate {
+      position: absolute;
+      left: 50%;
+      top: max(18px, env(safe-area-inset-top));
+      display: none;
+      align-items: center;
+      gap: 7px;
+      min-height: 34px;
+      padding: 7px 12px;
+      border: 1px solid rgba(255,255,255,.34);
+      border-radius: 999px;
+      color: white;
+      background: rgba(30,77,125,.22);
+      box-shadow: inset 0 1px rgba(255,255,255,.2), 0 7px 24px rgba(9,38,76,.2);
+      backdrop-filter: blur(12px);
+      transform: translateX(-50%);
+      font: 850 9px/1 inherit;
+      letter-spacing: 1.2px;
+      pointer-events: auto;
+      -webkit-tap-highlight-color: transparent;
+    }
+    #gyro-live-calibrate::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--cyan); box-shadow: 0 0 10px var(--cyan); }
+    body[data-game-state="running"][data-gyro="ready"] #gyro-live-calibrate,
+    body[data-game-state="running"][data-gyro="calibrating"] #gyro-live-calibrate { display: flex; }
+    body[data-gyro="calibrating"] #gyro-live-calibrate::before { background: var(--gold); box-shadow: 0 0 10px var(--gold); animation: ctaPulse .8s ease-in-out infinite; }
     #rotate-hint { position: fixed; inset: 0; z-index: 40; display: none; place-items: center; padding: 30px; color: white; background: #2e6fd1; text-align: center; font-weight: 850; letter-spacing: 1px; }
     #rotate-hint b { display: block; margin-bottom: 15px; font-size: 42px; }
 
@@ -210,9 +264,9 @@
       -webkit-user-select: text;
     }
 
-    @media (pointer: coarse) { #touch-ui { display: block; } #hints { display: none; } }
+    @media (pointer: coarse) { #touch-ui { display: block; } #hints { display: none; } #gyro-controls:not([hidden]) { display: flex; } }
     @media (orientation: portrait) and (pointer: coarse) { #rotate-hint { display: grid; } }
-    @media (max-height: 620px) { h1 { font-size: clamp(46px, 14vh, 76px); } #subtitle { margin-top: 12px; } #hints { margin-top: 18px; } #ride-cta { margin-top: 18px; } }
+    @media (max-height: 620px) { h1 { font-size: clamp(46px, 14vh, 76px); } #subtitle { margin-top: 12px; } #hints { margin-top: 18px; } #gyro-controls { margin-top: 15px; } #ride-cta { margin-top: 18px; } }
     @media (prefers-reduced-motion: reduce) { #ride-cta { animation: none; } }
   </style>
 </head>
@@ -248,13 +302,22 @@
         <div class="hint"><span class="key">S</span> GRAB</div>
         <div class="hint"><span class="key">R</span> RESET</div>
       </div>
+      <div id="gyro-controls" hidden>
+        <div id="gyro-actions">
+          <button id="gyro-toggle" class="gyro-button primary" type="button" aria-pressed="false">ENABLE TILT</button>
+          <button id="gyro-calibrate" class="gyro-button" type="button" disabled>CALIBRATE</button>
+          <button id="gyro-invert" class="gyro-button" type="button" aria-pressed="false">DIRECTION: NORMAL</button>
+        </div>
+        <div id="gyro-status" role="status" aria-live="polite">OPTIONAL · TOUCH STEERING STAYS ACTIVE</div>
+      </div>
       <div id="ride-cta">CLICK TO RIDE</div>
     </div>
   </div>
 
-  <div id="touch-ui" aria-hidden="true">
+  <div id="touch-ui">
     <button id="jump-button" class="touch-button" type="button">JUMP</button>
     <button id="spin-button" class="touch-button" type="button">SPIN</button>
+    <button id="gyro-live-calibrate" type="button">TILT · RECALIBRATE</button>
   </div>
   <div id="rotate-hint"><div><b>↻</b>Rotate your phone for the full mountain.</div></div>
   <pre id="error-box"></pre>
@@ -379,6 +442,12 @@
         cleanLandingAngle: THREE.MathUtils.degToRad(50), switchAngle: THREE.MathUtils.degToRad(130),
         hardLandingVelocity: 5.2, tumbleSeconds: 1.5, tumbleSpeedFactor: 0.4
       },
+      gyro: {
+        deadZoneDegrees: 2.8, maxTiltDegrees: 21, smoothingRate: 8.5,
+        calibrationMilliseconds: 650, calibrationSamplesMinimum: 12,
+        staleAfterMilliseconds: 1000, sensorWaitMilliseconds: 3000, defaultInvert: false,
+        invertKey: 'alpine-rush-gyro-invert-v1'
+      },
       camera: {
         height: 2.72, behind: 7.35, stiffness: 7.4, damping: 0.88,
         leash: 4.3, terrainClearance: 1.18, lookAhead: 8.4, splineBlend: 0.27,
@@ -460,7 +529,10 @@
       shield: $('shield-badge'), fps: $('fps'), popup: $('popup-layer'), overlay: $('overlay'),
       result: $('result'), resultScore: $('result-score'), resultBest: $('result-best'),
       resultDistance: $('result-distance'), cta: $('ride-cta'), error: $('error-box'),
-      jump: $('jump-button'), spin: $('spin-button')
+      jump: $('jump-button'), spin: $('spin-button'), gyroControls: $('gyro-controls'),
+      gyroToggle: $('gyro-toggle'), gyroCalibrate: $('gyro-calibrate'),
+      gyroInvert: $('gyro-invert'), gyroStatus: $('gyro-status'),
+      gyroLiveCalibrate: $('gyro-live-calibrate')
     };
 
     function showError(message) {
@@ -1482,6 +1554,7 @@
 
     const riderRig = createRider();
     const savedBest = (() => { try { return Number(localStorage.getItem(CONFIG.ui.bestKey)) || 0; } catch { return 0; } })();
+    const savedGyroInvert = (() => { try { const value=localStorage.getItem(CONFIG.gyro.invertKey);return value===null?CONFIG.gyro.defaultInvert:value==='1'; } catch { return CONFIG.gyro.defaultInvert; } })();
     const state = {
       mode: 'MENU', ride: 'GROUNDED', time: 0, runTime: 0, accumulator: 0,
       score: 0, best: savedBest, distance: 0, startZ: 16, maxCourseZ: 16,
@@ -1504,7 +1577,117 @@
       jumpQueued: false, touchSteer: 0, touchSpin: false, lastTouchSteer: 1,
       pointers: new Map()
     };
+    const gyro = {
+      supported: IS_TOUCH && typeof window.DeviceOrientationEvent !== 'undefined',
+      permission: 'unknown', status: 'off', enabled: false, inverted: savedGyroInvert,
+      rawTilt: 0, neutral: 0, target: 0, steer: 0, lastEventTime: 0,
+      calibrationStarted: 0, calibrationSum: 0, calibrationSamples: 0, calibrationToken: 0
+    };
     let fxRng = mulberry32(CONFIG.seed ^ 0xF00DCAFE);
+
+    function updateGyroUi() {
+      dom.gyroControls.hidden=!IS_TOUCH;
+      let toggleLabel='ENABLE TILT',statusLabel='OPTIONAL · TOUCH STEERING STAYS ACTIVE';
+      if(!gyro.supported){toggleLabel='TILT UNAVAILABLE';statusLabel='TOUCH STEERING ACTIVE';}
+      else if(gyro.status==='requesting'){toggleLabel='ALLOW TILT…';statusLabel='CHECK THE BROWSER PERMISSION PROMPT';}
+      else if(gyro.status==='denied'){toggleLabel='TRY TILT AGAIN';statusLabel='TILT BLOCKED · TOUCH STEERING ACTIVE';}
+      else if(gyro.status==='no-signal'){toggleLabel='TRY TILT AGAIN';statusLabel='NO TILT SIGNAL · TOUCH STEERING ACTIVE';}
+      else if(gyro.status==='error'){toggleLabel='TRY TILT AGAIN';statusLabel='TILT FAILED · TOUCH STEERING ACTIVE';}
+      else if(gyro.status==='calibrating'){toggleLabel='TILT: ON';statusLabel='HOLD PHONE NATURALLY · CALIBRATING…';}
+      else if(gyro.status==='ready'){toggleLabel='TILT: ON';statusLabel='TILT TO CARVE · TOUCH OVERRIDES';}
+      dom.gyroToggle.textContent=toggleLabel;
+      dom.gyroToggle.disabled=!gyro.supported||gyro.status==='requesting';
+      dom.gyroToggle.setAttribute('aria-pressed',String(gyro.enabled));
+      dom.gyroCalibrate.disabled=!gyro.enabled;
+      dom.gyroInvert.disabled=!gyro.supported;
+      dom.gyroInvert.textContent=`DIRECTION: ${gyro.inverted?'REVERSED':'NORMAL'}`;
+      dom.gyroInvert.setAttribute('aria-pressed',String(gyro.inverted));
+      dom.gyroStatus.textContent=statusLabel;
+      dom.gyroLiveCalibrate.textContent=gyro.status==='calibrating'?'TILT · HOLD STEADY':'TILT · RECALIBRATE';
+      document.body.dataset.gyro=gyro.status;
+    }
+
+    function setGyroStatus(status) {
+      gyro.status=status;
+      updateGyroUi();
+    }
+
+    function currentScreenAngle() {
+      const value=Number(screen.orientation?.angle??window.orientation??0);
+      return Number.isFinite(value)?value:0;
+    }
+
+    function orientationTilt(beta,gamma,screenAngle=currentScreenAngle()) {
+      if(!Number.isFinite(beta)||!Number.isFinite(gamma))return null;
+      const radians=screenAngle*DEG;
+      return gamma*Math.cos(radians)-beta*Math.sin(radians);
+    }
+
+    function beginGyroCalibration() {
+      if(!gyro.enabled)return;
+      gyro.rawTilt=gyro.neutral=gyro.target=gyro.steer=0;
+      gyro.lastEventTime=gyro.calibrationStarted=gyro.calibrationSum=gyro.calibrationSamples=0;
+      const calibrationToken=++gyro.calibrationToken;
+      setGyroStatus('calibrating');
+      logEvent('GYRO','calibrating');
+      setTimeout(()=>{
+        if(calibrationToken!==gyro.calibrationToken||!gyro.enabled||gyro.status!=='calibrating')return;
+        gyro.enabled=false;gyro.target=gyro.steer=0;setGyroStatus('no-signal');logEvent('GYRO','no-signal');
+      },CONFIG.gyro.sensorWaitMilliseconds);
+    }
+
+    function acceptGyroTilt(tilt,now=performance.now()) {
+      if(!gyro.enabled||!Number.isFinite(tilt))return;
+      gyro.rawTilt=tilt;gyro.lastEventTime=now;
+      if(gyro.status==='calibrating'){
+        if(!gyro.calibrationStarted)gyro.calibrationStarted=now;
+        gyro.calibrationSum+=tilt;gyro.calibrationSamples++;
+        if(now-gyro.calibrationStarted>=CONFIG.gyro.calibrationMilliseconds&&gyro.calibrationSamples>=CONFIG.gyro.calibrationSamplesMinimum){
+          gyro.neutral=gyro.calibrationSum/gyro.calibrationSamples;gyro.target=gyro.steer=0;setGyroStatus('ready');
+          if(state.mode==='RUNNING')popup('TILT CALIBRATED','good');
+          logEvent('GYRO','ready');
+        }
+        return;
+      }
+      if(gyro.status!=='ready')return;
+      const delta=(tilt-gyro.neutral)*(gyro.inverted?-1:1),magnitude=Math.abs(delta);
+      gyro.target=Math.sign(delta)*clamp((magnitude-CONFIG.gyro.deadZoneDegrees)/(CONFIG.gyro.maxTiltDegrees-CONFIG.gyro.deadZoneDegrees),0,1);
+    }
+
+    function handleDeviceOrientation(event) {
+      const tilt=orientationTilt(event.beta,event.gamma);
+      if(tilt!==null)acceptGyroTilt(tilt);
+    }
+
+    function updateGyroSteer(dt) {
+      let target=0;
+      if(gyro.enabled&&gyro.status==='ready'&&performance.now()-gyro.lastEventTime<=CONFIG.gyro.staleAfterMilliseconds)target=gyro.target;
+      gyro.steer=lerp(gyro.steer,target,expEase(CONFIG.gyro.smoothingRate,dt));
+    }
+
+    async function toggleGyro() {
+      if(gyro.enabled){
+        gyro.enabled=false;gyro.calibrationToken++;gyro.target=gyro.steer=0;setGyroStatus('off');logEvent('GYRO','disabled');return;
+      }
+      if(!gyro.supported)return;
+      setGyroStatus('requesting');
+      try{
+        if(gyro.permission!=='granted'&&typeof window.DeviceOrientationEvent.requestPermission==='function'){
+          const permission=await window.DeviceOrientationEvent.requestPermission();
+          gyro.permission=permission;
+          if(permission!=='granted'){gyro.enabled=false;gyro.calibrationToken++;setGyroStatus('denied');logEvent('GYRO','denied');return;}
+        }else gyro.permission='granted';
+        gyro.enabled=true;beginGyroCalibration();logEvent('GYRO','enabled');
+      }catch(error){
+        gyro.enabled=false;gyro.calibrationToken++;gyro.permission='error';setGyroStatus('error');logEvent('GYRO',error?.name||'error');
+      }
+    }
+
+    function toggleGyroInvert() {
+      gyro.inverted=!gyro.inverted;
+      try{localStorage.setItem(CONFIG.gyro.invertKey,gyro.inverted?'1':'0');}catch{}
+      gyro.target=gyro.steer=0;updateGyroUi();logEvent('GYRO',gyro.inverted?'reversed':'normal');
+    }
 
     function logEvent(type, detail = '') {
       state.lastEvent = detail ? `${type}:${detail}` : type;
@@ -2039,11 +2222,13 @@
 
     function currentSteer() {
       const keyboard=(input.keys.has('ArrowRight')||input.keys.has('KeyD')?1:0)-(input.keys.has('ArrowLeft')||input.keys.has('KeyA')?1:0);
-      return clamp(keyboard+input.touchSteer,-1,1);
+      if(keyboard)return keyboard;
+      if(input.touchSteer)return input.touchSteer;
+      return gyro.enabled?gyro.steer:0;
     }
     function currentSpin() {
       const keyboard=(input.keys.has('KeyE')?1:0)-(input.keys.has('KeyQ')?1:0);
-      if(keyboard)return keyboard;if(input.touchSpin)return input.touchSteer||input.lastTouchSteer||1;return 0;
+      if(keyboard)return keyboard;if(input.touchSpin)return Math.sign(input.touchSteer||gyro.steer||input.lastTouchSteer||1);return 0;
     }
 
     function beginAir(pop=false) {
@@ -2088,6 +2273,7 @@
       }
       if(state.mode!=='RUNNING')return;
       state.runTime+=dt;state.boost=Math.max(0,state.boost-dt);if(state.comboLeft>0){state.comboLeft-=dt;if(state.comboLeft<=0)resetCombo();}
+      updateGyroSteer(dt);
       const steer=currentSteer(),spin=currentSpin();input.steer=steer;input.spin=spin;input.tuck=input.keys.has('KeyW')||input.keys.has('ShiftLeft')||input.keys.has('ShiftRight');input.grab=input.keys.has('KeyS');
       const course=courseCoords(rider.position.x,rider.position.z),progress=clamp(state.distance/CONFIG.physics.progressionDistance,0,1),speedCap=lerp(CONFIG.physics.maxSpeed/(1+CONFIG.physics.progressionGain),CONFIG.physics.maxSpeed,progress),trackDir=track.dirAt(course.s,dirScratch),trackYaw=Math.atan2(trackDir.x,trackDir.z);
       state.maxCourseZ=Math.max(state.maxCourseZ,course.s);state.distance=Math.max(0,state.maxCourseZ-state.startZ);
@@ -2209,7 +2395,7 @@
       if(document.hidden||frameMs>100)return;state.frameMsEma=lerp(state.frameMsEma,frameMs,CONFIG.renderer.fpsEmaMix);if(qualityWarmup>0){qualityWarmup--;return;}if(state.frameMsEma>CONFIG.renderer.qualityFrameMs)state.slowSeconds+=dt;else state.slowSeconds=Math.max(0,state.slowSeconds-dt*.45);if(state.slowSeconds>CONFIG.renderer.qualityHoldSeconds)stepQuality();
     }
 
-    function clearInputs() { input.keys.clear();input.pointers.clear();input.touchSteer=0;input.touchSpin=false;input.jumpQueued=false; }
+    function clearInputs() { input.keys.clear();input.pointers.clear();input.touchSteer=0;input.touchSpin=false;input.jumpQueued=false;gyro.target=gyro.steer=0; }
     function recalcTouchSteer() {
       let steer=0;for(const pointer of input.pointers.values())if(pointer.zone==='left')steer--;else if(pointer.zone==='right')steer++;input.touchSteer=clamp(steer,-1,1);if(input.touchSteer)input.lastTouchSteer=input.touchSteer;
     }
@@ -2221,10 +2407,20 @@
       input.keys.add(event.code);
     });
     addEventListener('keyup',event=>input.keys.delete(event.code));
-    addEventListener('blur',clearInputs);document.addEventListener('visibilitychange',()=>{if(document.hidden)clearInputs();});
+    addEventListener('blur',clearInputs);document.addEventListener('visibilitychange',()=>{if(document.hidden)clearInputs();else if(gyro.enabled)beginGyroCalibration();});
     addEventListener('contextmenu',event=>event.preventDefault());
     dom.overlay.addEventListener('click',()=>startRun(true));
     dom.overlay.addEventListener('keydown',event=>{if(event.code==='Enter')startRun(true);});
+    ['pointerdown','click','keydown'].forEach(type=>dom.gyroControls.addEventListener(type,event=>event.stopPropagation()));
+    dom.gyroToggle.addEventListener('click',toggleGyro);
+    dom.gyroCalibrate.addEventListener('click',beginGyroCalibration);
+    dom.gyroInvert.addEventListener('click',toggleGyroInvert);
+    dom.gyroLiveCalibrate.addEventListener('pointerdown',event=>event.stopPropagation());
+    dom.gyroLiveCalibrate.addEventListener('click',event=>{event.stopPropagation();beginGyroCalibration();});
+    if(gyro.supported)addEventListener('deviceorientation',handleDeviceOrientation,{passive:true});
+    const handleScreenOrientationChange=()=>{clearInputs();if(gyro.enabled)beginGyroCalibration();};
+    if(screen.orientation?.addEventListener)screen.orientation.addEventListener('change',handleScreenOrientationChange);
+    else addEventListener('orientationchange',handleScreenOrientationChange);
 
     renderer.domElement.addEventListener('pointerdown',event=>{
       if(!IS_TOUCH||state.mode!=='RUNNING')return;audio.ensure();renderer.domElement.setPointerCapture(event.pointerId);const fraction=event.clientX/innerWidth,zone=fraction<.4?'left':fraction>.6?'right':'middle';input.pointers.set(event.pointerId,{zone,x:event.clientX,y:event.clientY,time:performance.now()});recalcTouchSteer();event.preventDefault();
@@ -2243,14 +2439,14 @@
       return hash.toString(16).padStart(8,'0');
     }
     function worldProbe(z,lateral=0){track.lateralFrame(z,centerScratch,sideScratch,dirScratch);const x=centerScratch.x+sideScratch.x*lateral,worldZ=z+sideScratch.z*lateral,sample=getHeightAndNormal(x,worldZ);return{x,y:sample.height,z:worldZ,lateral,normal:[sample.normal.x,sample.normal.y,sample.normal.z],curvature:track.curvature(z)};}
-    function debugSnapshot(){const course=courseCoords(rider.position.x,rider.position.z);return{ready:true,gameState:state.mode,rideState:state.ride,seed:CONFIG.seed,assets:{status:visualAssets.status,source:visualAssets.source,loaded:visualAssets.loaded.slice(),failures:visualAssets.failures.slice()},rider:{position:[rider.position.x,rider.position.y,rider.position.z],speed:Math.hypot(rider.velocity.x,rider.velocity.z),lateral:course.lateral,yaw:rider.yaw,boardYaw:rider.boardYaw,edge:rider.edge,grounded:rider.grounded,airTime:rider.airTime,spin:rider.spinAccum,grab:rider.grabTime,grace:rider.collisionGrace},run:{score:state.score,best:state.best,distance:state.distance,chain:state.chain,multiplier:state.multiplier,comboLeft:state.comboLeft,boost:state.boost,shield:state.shield},stream:{activeChunks:world.activeIndices(),rebuiltThisFrame:world.rebuiltThisFrame,poolSize:world.slots.length,pickupSlots:pickupSystem.records.length},quality:{tier:state.qualityTier,dpr:renderer.getPixelRatio(),dof:state.dofEnabled,godRays:state.godRaysEnabled,frameMsEma:state.frameMsEma,drawCalls:renderer.info.render.calls,triangles:renderer.info.render.triangles},audio:{created:!!audio.context,state:audio.context?.state||'not-created',activeShots:audio.activeShots,lastShot:audio.lastShot},lastEvent:state.lastEvent,events:state.events.slice()};}
+    function debugSnapshot(){const course=courseCoords(rider.position.x,rider.position.z);return{ready:true,gameState:state.mode,rideState:state.ride,seed:CONFIG.seed,assets:{status:visualAssets.status,source:visualAssets.source,loaded:visualAssets.loaded.slice(),failures:visualAssets.failures.slice()},rider:{position:[rider.position.x,rider.position.y,rider.position.z],speed:Math.hypot(rider.velocity.x,rider.velocity.z),lateral:course.lateral,yaw:rider.yaw,boardYaw:rider.boardYaw,edge:rider.edge,grounded:rider.grounded,airTime:rider.airTime,spin:rider.spinAccum,grab:rider.grabTime,grace:rider.collisionGrace},run:{score:state.score,best:state.best,distance:state.distance,chain:state.chain,multiplier:state.multiplier,comboLeft:state.comboLeft,boost:state.boost,shield:state.shield},controls:{steer:input.steer,touchSteer:input.touchSteer,gyro:{supported:gyro.supported,permission:gyro.permission,status:gyro.status,enabled:gyro.enabled,inverted:gyro.inverted,rawTilt:gyro.rawTilt,neutral:gyro.neutral,target:gyro.target,steer:gyro.steer,samples:gyro.calibrationSamples}},stream:{activeChunks:world.activeIndices(),rebuiltThisFrame:world.rebuiltThisFrame,poolSize:world.slots.length,pickupSlots:pickupSystem.records.length},quality:{tier:state.qualityTier,dpr:renderer.getPixelRatio(),dof:state.dofEnabled,godRays:state.godRaysEnabled,frameMsEma:state.frameMsEma,drawCalls:renderer.info.render.calls,triangles:renderer.info.render.triangles},audio:{created:!!audio.context,state:audio.context?.state||'not-created',activeShots:audio.activeShots,lastShot:audio.lastShot},lastEvent:state.lastEvent,events:state.events.slice()};}
 
     const debugEnabled=new URLSearchParams(location.search).has('debug');
     const debugApi={snapshot:debugSnapshot,worldProbe,deterministicSignature};
-    if(debugEnabled)Object.assign(debugApi,{pauseSimulation:value=>state.paused=!!value,step:(frames=1,dt=CONFIG.physics.fixedStep)=>{for(let i=0;i<frames;i++)physicsStep(dt);return debugSnapshot();},setInput:values=>{if(Number.isFinite(values.steer))input.touchSteer=clamp(values.steer,-1,1);if('tuck'in values){if(values.tuck)input.keys.add('KeyW');else input.keys.delete('KeyW');}if(Number.isFinite(values.spin)){input.touchSpin=values.spin!==0;input.lastTouchSteer=Math.sign(values.spin)||1;}if('grab'in values){if(values.grab)input.keys.add('KeyS');else input.keys.delete('KeyS');}},pulse:action=>{if(action==='jump')input.jumpQueued=true;else if(action==='respawn')respawn();},teleport:({distance=state.distance,lateral=0,heightOffset=0,speed=20,yawOffset=0}={})=>{const z=state.startZ+distance;track.lateralFrame(z,centerScratch,sideScratch,dirScratch);rider.position.set(centerScratch.x+sideScratch.x*lateral,heightAt(centerScratch.x+sideScratch.x*lateral,z+sideScratch.z*lateral)+CONFIG.physics.riderHeight+heightOffset,z+sideScratch.z*lateral);rider.yaw=Math.atan2(dirScratch.x,dirScratch.z)+yawOffset;rider.boardYaw=rider.yaw;rider.velocity.set(Math.sin(rider.yaw)*speed,0,Math.cos(rider.yaw)*speed);rider.grounded=heightOffset<=0;state.ride=rider.grounded?'GROUNDED':'AIRBORNE';world.update(rider.position.z);return debugSnapshot();},grant:kind=>{if(kind==='boost')state.boost=CONFIG.pickups.boostSeconds;else if(kind==='shield')state.shield=true;else award(CONFIG.pickups.orbScore,'ORB');return debugSnapshot();},collide:kind=>{fatalContact(kind);return debugSnapshot();},forceGate:outcome=>{if(outcome==='pass')award(CONFIG.pickups.gateScore,'GATE');else{resetCombo();popup('GATE MISSED','bad');}return debugSnapshot();},forceQualityStep:()=>{stepQuality();return debugSnapshot();}});
+    if(debugEnabled)Object.assign(debugApi,{pauseSimulation:value=>state.paused=!!value,step:(frames=1,dt=CONFIG.physics.fixedStep)=>{for(let i=0;i<frames;i++)physicsStep(dt);return debugSnapshot();},setInput:values=>{if(Number.isFinite(values.steer))input.touchSteer=clamp(values.steer,-1,1);if('tuck'in values){if(values.tuck)input.keys.add('KeyW');else input.keys.delete('KeyW');}if(Number.isFinite(values.spin)){input.touchSpin=values.spin!==0;input.lastTouchSteer=Math.sign(values.spin)||1;}if('grab'in values){if(values.grab)input.keys.add('KeyS');else input.keys.delete('KeyS');}},pulse:action=>{if(action==='jump')input.jumpQueued=true;else if(action==='respawn')respawn();},gyroMath:(beta,gamma,angle=0)=>orientationTilt(beta,gamma,angle),gyroEnable:()=>{gyro.permission='granted';gyro.enabled=true;beginGyroCalibration();return debugSnapshot();},gyroSample:({beta=0,gamma=0,angle=currentScreenAngle(),time=performance.now()}={})=>{const tilt=orientationTilt(beta,gamma,angle);if(tilt!==null)acceptGyroTilt(tilt,time);return debugSnapshot();},teleport:({distance=state.distance,lateral=0,heightOffset=0,speed=20,yawOffset=0}={})=>{const z=state.startZ+distance;track.lateralFrame(z,centerScratch,sideScratch,dirScratch);rider.position.set(centerScratch.x+sideScratch.x*lateral,heightAt(centerScratch.x+sideScratch.x*lateral,z+sideScratch.z*lateral)+CONFIG.physics.riderHeight+heightOffset,z+sideScratch.z*lateral);rider.yaw=Math.atan2(dirScratch.x,dirScratch.z)+yawOffset;rider.boardYaw=rider.yaw;rider.velocity.set(Math.sin(rider.yaw)*speed,0,Math.cos(rider.yaw)*speed);rider.grounded=heightOffset<=0;state.ride=rider.grounded?'GROUNDED':'AIRBORNE';world.update(rider.position.z);return debugSnapshot();},grant:kind=>{if(kind==='boost')state.boost=CONFIG.pickups.boostSeconds;else if(kind==='shield')state.shield=true;else award(CONFIG.pickups.orbScore,'ORB');return debugSnapshot();},collide:kind=>{fatalContact(kind);return debugSnapshot();},forceGate:outcome=>{if(outcome==='pass')award(CONFIG.pickups.gateScore,'GATE');else{resetCombo();popup('GATE MISSED','bad');}return debugSnapshot();},forceQualityStep:()=>{stepQuality();return debugSnapshot();}});
     window.__ALPINE_DEBUG__=debugApi;window.__ALPINE_CONFIG__=CONFIG;window.__ALPINE_ASSETS__=visualAssets;
 
-    initialRiderPose();camera.position.set(rider.position.x+CONFIG.camera.menuRadius,rider.position.y+CONFIG.camera.menuHeight,rider.position.z);camera.lookAt(rider.position);resizeRendering();document.body.dataset.gameState='menu';
+    updateGyroUi();initialRiderPose();camera.position.set(rider.position.x+CONFIG.camera.menuRadius,rider.position.y+CONFIG.camera.menuHeight,rider.position.z);camera.lookAt(rider.position);resizeRendering();document.body.dataset.gameState='menu';
     try{renderer.compile(scene,camera);}catch(error){showError(error.stack||error.message);}
 
     let lastFrame=performance.now();
