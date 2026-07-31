@@ -4,6 +4,10 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
   <meta name="theme-color" content="#2e6fd1">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="ALPINE RUSH">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%232e6fd1'/%3E%3Cpath d='M8 50 27 15l10 18 7-11 12 28Z' fill='%23f2f6ff'/%3E%3Cpath d='m22 50 10-18 10 18Z' fill='%23e8552d'/%3E%3C/svg%3E">
   <title>ALPINE RUSH</title>
   <style>
@@ -166,6 +170,28 @@
     #ride-cta { margin-top: 31px; font-size: 13px; font-weight: 950; letter-spacing: 4px; animation: ctaPulse 1.35s ease-in-out infinite; }
     @keyframes ctaPulse { 50% { opacity: .52; transform: translateY(3px); } }
 
+    #install-hint {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 6px 9px;
+      width: fit-content;
+      max-width: min(430px, 92vw);
+      margin: 17px auto -13px;
+      padding: 8px 13px;
+      border: 1px solid rgba(255,255,255,.25);
+      border-radius: 999px;
+      background: rgba(27,73,122,.18);
+      box-shadow: inset 0 1px rgba(255,255,255,.18);
+      backdrop-filter: blur(12px);
+      font-size: 9px;
+      font-weight: 850;
+      letter-spacing: 1.2px;
+    }
+    #install-hint[hidden] { display: none; }
+    #install-hint span { color: #ffe19a; }
+
     #gyro-controls {
       display: none;
       flex-direction: column;
@@ -243,6 +269,7 @@
     body[data-game-state="running"][data-gyro="calibrating"] #gyro-live-calibrate { display: flex; }
     body[data-gyro="calibrating"] #gyro-live-calibrate::before { background: var(--gold); box-shadow: 0 0 10px var(--gold); animation: ctaPulse .8s ease-in-out infinite; }
     #rotate-hint { position: fixed; inset: 0; z-index: 40; display: none; place-items: center; padding: 30px; color: white; background: #2e6fd1; text-align: center; font-weight: 850; letter-spacing: 1px; }
+    body[data-fullscreen-capable="true"] #rotate-hint { pointer-events: none; }
     #rotate-hint b { display: block; margin-bottom: 15px; font-size: 42px; }
 
     #error-box {
@@ -265,8 +292,12 @@
     }
 
     @media (pointer: coarse) { #touch-ui { display: block; } #hints { display: none; } #gyro-controls:not([hidden]) { display: flex; } }
+    @media (pointer: coarse) and (orientation: landscape) {
+      #jump-button { left: calc(max(22px, env(safe-area-inset-left)) + 96px); }
+      #spin-button { right: calc(max(22px, env(safe-area-inset-right)) + 96px); }
+    }
     @media (orientation: portrait) and (pointer: coarse) { #rotate-hint { display: grid; } }
-    @media (max-height: 620px) { h1 { font-size: clamp(46px, 14vh, 76px); } #subtitle { margin-top: 12px; } #hints { margin-top: 18px; } #gyro-controls { margin-top: 15px; } #ride-cta { margin-top: 18px; } }
+    @media (max-height: 620px) { h1 { font-size: clamp(46px, 14vh, 76px); } #subtitle { margin-top: 12px; } #hints { margin-top: 18px; } #gyro-controls { margin-top: 15px; } #install-hint { margin-top: 10px; } #ride-cta { margin-top: 18px; } }
     @media (prefers-reduced-motion: reduce) { #ride-cta { animation: none; } }
   </style>
 </head>
@@ -310,6 +341,7 @@
         </div>
         <div id="gyro-status" role="status" aria-live="polite">OPTIONAL · TOUCH STEERING STAYS ACTIVE</div>
       </div>
+      <div id="install-hint" role="note" hidden><span>IPHONE FULL SCREEN</span> SHARE ↑ · ADD TO HOME SCREEN</div>
       <div id="ride-cta">CLICK TO RIDE</div>
     </div>
   </div>
@@ -385,7 +417,7 @@
       },
       terrain: {
         chunkLength: 100, rows: 64, ahead: 8, behind: 2,
-        corridorHalf: 33, worldHalf: 70, denseSpacing: 1.65, sparseSpacing: 6.5,
+        corridorHalf: 33, worldHalf: 70, renderSafetyMargin: 16, denseSpacing: 1.65, sparseSpacing: 6.5,
         pisteHalf: 16, valleyStart: 24, valleyStrength: 0.0068, valleyCap: 12,
         bankScale: 180, bankCap: 0.13,
         rollerShortLength: 54, rollerShortAmp: 0.30,
@@ -443,6 +475,7 @@
         floorStart: 13, floorEnd: 33, floorDistance: 3500,
         floorAcceleration: 3.2, boostAcceleration: 10.5,
         assistStart: 12, assistEnd: 24, assistRate: 1.35, boundaryStart: 21, boundaryForce: 8.5,
+        boundaryEmergencyStart: 28, boundaryEmergencyAcceleration: 220, boundaryReturnSpeed: 5,
         stuckSpeed: 3.5, stuckSeconds: 2.2, respawnGrace: 1.2,
         takeoffGapVelocity: 2.6, popVelocity: 4.9, riderHeight: 0.48,
         surfaceVerticalLimit: 12, terminalVelocity: 55,
@@ -486,11 +519,14 @@
         scrapeMinHz: 380, scrapeMaxHz: 3200, windMinHz: 220, windMaxHz: 1600,
         pentatonic: [523.25, 587.33, 659.25, 783.99, 880.00]
       },
-      ui: { bestKey: 'alpine-rush-best-v1', popupMs: 1350 }
+      ui: { bestKey: 'alpine-rush-best-v1', popupMs: 1350, fullscreenOrientation: 'landscape' }
     });
 
     const IS_TOUCH = matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0;
     const IS_MOBILE = IS_TOUCH || Math.min(innerWidth, innerHeight) < 700;
+    const IS_IOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const IS_STANDALONE = navigator.standalone === true || matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: fullscreen)').matches;
+    const FULLSCREEN_SUPPORTED = typeof document.documentElement.requestFullscreen === 'function' && document.fullscreenEnabled !== false;
     const DEG = Math.PI / 180;
     const TAU = Math.PI * 2;
     const BLOOM_LAYER = 3;
@@ -550,7 +586,7 @@
       jump: $('jump-button'), spin: $('spin-button'), gyroControls: $('gyro-controls'),
       gyroToggle: $('gyro-toggle'), gyroCalibrate: $('gyro-calibrate'),
       gyroInvert: $('gyro-invert'), gyroStatus: $('gyro-status'),
-      gyroLiveCalibrate: $('gyro-live-calibrate')
+      gyroLiveCalibrate: $('gyro-live-calibrate'), installHint: $('install-hint')
     };
 
     function showError(message) {
@@ -670,21 +706,12 @@
     const courseScratch = { s: 0, lateral: 0 };
 
     function courseCoords(x, z, target = courseScratch) {
-      let s = z;
       const h = CONFIG.track.derivativeStep;
-      for (let i = 0; i < 2; i++) {
-        const cx = track.xAt(s);
-        const xm = track.xAt(s - h), xp = track.xAt(s + h);
-        const dx = (xp - xm) / (2 * h);
-        const f = (cx - x) * dx + (s - z);
-        const step = clamp(f / (dx * dx + 1), -CONFIG.track.pointSpacing * .5, CONFIG.track.pointSpacing * .5);
-        s = clamp(s - step, z - CONFIG.terrain.worldHalf, z + CONFIG.terrain.worldHalf);
-      }
-      const cx = track.xAt(s);
-      const dx = (track.xAt(s + h) - track.xAt(s - h)) / (2 * h);
+      const cx = track.xAt(z);
+      const dx = (track.xAt(z + h) - track.xAt(z - h)) / (2 * h);
       const inv = 1 / Math.sqrt(1 + dx * dx);
-      target.s = s;
-      target.lateral = (x - cx) * inv + (z - s) * (-dx * inv);
+      target.s = z;
+      target.lateral = (x - cx) * inv;
       return target;
     }
 
@@ -1411,8 +1438,9 @@
           track.lateralFrame(z, centerScratch, sideScratch, dirScratch);
           for (let c = 0; c < cols; c++, vertex++) {
             const lateral = LATERALS[c];
-            const x = centerScratch.x + sideScratch.x * lateral;
-            const worldZ = centerScratch.z + sideScratch.z * lateral;
+            // Keep the XZ grid a height field; normal-offset rows fold inside tight turns.
+            const x = centerScratch.x + lateral / sideScratch.x;
+            const worldZ = z;
             const sample = getHeightAndNormal(x, worldZ);
             positions.setXYZ(vertex, x, sample.height, worldZ);
             normals.setXYZ(vertex, sample.normal.x, sample.normal.y, sample.normal.z);
@@ -1638,7 +1666,16 @@
       rawTilt: 0, neutral: 0, target: 0, steer: 0, lastEventTime: 0,
       calibrationStarted: 0, calibrationSum: 0, calibrationSamples: 0, calibrationToken: 0
     };
+    const fullscreenState = {
+      status: IS_STANDALONE ? 'standalone' : IS_TOUCH ? (FULLSCREEN_SUPPORTED ? 'available' : 'unavailable') : 'desktop',
+      attempts: 0, lastResult: 'none', lastError: 'none', orientation: 'idle'
+    };
     let fxRng = mulberry32(CONFIG.seed ^ 0xF00DCAFE);
+
+    function fullscreenPolicy(overrides={}) {
+      const touch=overrides.touch??IS_TOUCH,ios=overrides.ios??IS_IOS,standalone=overrides.standalone??IS_STANDALONE,supported=overrides.supported??FULLSCREEN_SUPPORTED;
+      return{touch,ios,standalone,supported,request:touch&&supported&&!standalone,showInstallHint:touch&&ios&&!standalone&&!supported};
+    }
 
     function updateGyroUi() {
       dom.gyroControls.hidden=!IS_TOUCH;
@@ -2263,18 +2300,53 @@
       world.currentChunk=0;
     }
 
+    function updateFullscreenUi(again=false) {
+      const policy=fullscreenPolicy(),base=IS_TOUCH?'TAP TO RIDE':'CLICK TO RIDE';
+      dom.installHint.hidden=!policy.showInstallHint;
+      dom.cta.textContent=`${base}${again?' AGAIN':''}${policy.request&&!document.fullscreenElement?' · FULLSCREEN':''}`;
+      document.body.dataset.fullscreen=fullscreenState.status;
+      document.body.dataset.fullscreenCapable=String(policy.request);
+    }
+
+    function recordFullscreenFailure(error) {
+      fullscreenState.status='failed';fullscreenState.lastResult='rejected';fullscreenState.lastError=error?.name||'Error';
+      document.body.dataset.fullscreen=fullscreenState.status;logEvent('FULLSCREEN',`rejected:${fullscreenState.lastError}`);
+    }
+
+    function tryLockLandscape() {
+      if(typeof screen.orientation?.lock!=='function'){fullscreenState.orientation='unsupported';return;}
+      fullscreenState.orientation='requesting';
+      try{
+        const result=screen.orientation.lock(CONFIG.ui.fullscreenOrientation);
+        Promise.resolve(result).then(()=>{fullscreenState.orientation='locked';logEvent('ORIENTATION','landscape');}).catch(error=>{fullscreenState.orientation='rejected';logEvent('ORIENTATION',`rejected:${error?.name||'Error'}`);});
+      }catch(error){fullscreenState.orientation='rejected';logEvent('ORIENTATION',`rejected:${error?.name||'Error'}`);}
+    }
+
+    function requestGameFullscreen() {
+      const policy=fullscreenPolicy();
+      if(!policy.touch)return false;
+      if(policy.standalone){fullscreenState.status='standalone';fullscreenState.lastResult='standalone';tryLockLandscape();return false;}
+      if(!policy.request||document.fullscreenElement)return false;
+      fullscreenState.attempts++;fullscreenState.status='requesting';fullscreenState.lastResult='requesting';fullscreenState.lastError='none';document.body.dataset.fullscreen=fullscreenState.status;
+      try{
+        const result=document.documentElement.requestFullscreen();
+        Promise.resolve(result).then(()=>{fullscreenState.status=document.fullscreenElement?'active':'requested';fullscreenState.lastResult='entered';document.body.dataset.fullscreen=fullscreenState.status;logEvent('FULLSCREEN','entered');tryLockLandscape();}).catch(recordFullscreenFailure);
+        return true;
+      }catch(error){recordFullscreenFailure(error);return false;}
+    }
+
     function resetRun() {
       state.score=0;state.distance=0;state.maxCourseZ=state.startZ;state.runTime=0;state.accumulator=0;state.boost=0;state.shield=false;state.chain=0;state.multiplier=1;state.comboLeft=0;state.boundary=0;state.chroma=0;state.shake=0;state.landingCompression=0;state.wipeoutLeft=0;state.eventCounter=0;state.events.length=0;state.paused=false;
       fxRng=mulberry32(CONFIG.seed^0xF00DCAFE);rebuildStartWorld();initialRiderPose();updateComboHud();
     }
 
     function startRun(fromGesture=true) {
-      if(state.mode==='RUNNING'||state.mode==='TUMBLING')return;if(fromGesture)audio.ensure();resetRun();state.mode='RUNNING';state.ride='GROUNDED';document.body.dataset.gameState='running';dom.overlay.classList.add('hidden');dom.hud.classList.add('visible');dom.hud.setAttribute('aria-hidden','false');dom.result.classList.remove('visible');dom.cta.textContent='CLICK TO RIDE';logEvent('STATECHANGE','RUNNING');
+      if(state.mode==='RUNNING'||state.mode==='TUMBLING')return;if(fromGesture){audio.ensure();requestGameFullscreen();}resetRun();state.mode='RUNNING';state.ride='GROUNDED';document.body.dataset.gameState='running';dom.overlay.classList.add('hidden');dom.hud.classList.add('visible');dom.hud.setAttribute('aria-hidden','false');dom.result.classList.remove('visible');updateFullscreenUi();logEvent('STATECHANGE','RUNNING');
     }
 
     function endRun() {
       state.mode='ENDED';state.ride='GROUNDED';state.best=Math.max(state.best,state.score);try{localStorage.setItem(CONFIG.ui.bestKey,String(state.best));}catch{}
-      dom.resultScore.textContent=state.score.toLocaleString();dom.resultBest.textContent=state.best.toLocaleString();dom.resultDistance.textContent=formatDistance(state.distance);dom.result.classList.add('visible');dom.cta.textContent='CLICK TO RIDE AGAIN';dom.overlay.classList.remove('hidden');dom.overlay.setAttribute('aria-label','Ride ALPINE RUSH again');document.body.dataset.gameState='ended';logEvent('STATECHANGE','ENDED');
+      dom.resultScore.textContent=state.score.toLocaleString();dom.resultBest.textContent=state.best.toLocaleString();dom.resultDistance.textContent=formatDistance(state.distance);dom.result.classList.add('visible');updateFullscreenUi(true);dom.overlay.classList.remove('hidden');dom.overlay.setAttribute('aria-label','Ride ALPINE RUSH again');document.body.dataset.gameState='ended';logEvent('STATECHANGE','ENDED');
     }
 
     function respawn(resetChain=true) {
@@ -2292,7 +2364,19 @@
 
     function formatDistance(meters) { return meters>=1000?`${(meters/1000).toFixed(meters>=10000?1:2)} km`:`${Math.floor(meters)} m`; }
 
-    const physicsForward=new THREE.Vector3(),physicsRight=new THREE.Vector3(),gravityVector=new THREE.Vector3(0,-CONFIG.physics.gravity,0),tangentGravity=new THREE.Vector3(),tempVelocity=new THREE.Vector3();
+    const physicsForward=new THREE.Vector3(),physicsRight=new THREE.Vector3(),physicsTrackSide=new THREE.Vector3(),gravityVector=new THREE.Vector3(0,-CONFIG.physics.gravity,0),tangentGravity=new THREE.Vector3(),tempVelocity=new THREE.Vector3();
+    const boundaryCourse={s:0,lateral:0},boundaryCenter=new THREE.Vector3(),boundarySide=new THREE.Vector3(),boundaryDir=new THREE.Vector3();
+
+    function enforceTerrainEnvelope(){
+      const course=courseCoords(rider.position.x,rider.position.z,boundaryCourse),limit=CONFIG.terrain.worldHalf-CONFIG.terrain.renderSafetyMargin;
+      if(Math.abs(course.lateral)<=limit)return false;
+      track.lateralFrame(course.s,boundaryCenter,boundarySide,boundaryDir);
+      const side=Math.sign(course.lateral)||1,outwardSpeed=side*(rider.velocity.x*boundarySide.x+rider.velocity.z*boundarySide.z);
+      rider.position.x=boundaryCenter.x+side*limit/boundarySide.x;
+      if(outwardSpeed>0){const correction=outwardSpeed+CONFIG.physics.boundaryReturnSpeed;rider.velocity.x-=boundarySide.x*side*correction;rider.velocity.z-=boundarySide.z*side*correction;}
+      state.boundary=1;
+      return true;
+    }
     const orientationMatrix=new THREE.Matrix4(),orientationRight=new THREE.Vector3(),orientationUp=new THREE.Vector3(),orientationForward=new THREE.Vector3();
 
     function currentSteer() {
@@ -2344,7 +2428,7 @@
     function physicsStep(dt) {
       state.time+=dt;if(state.paused)return;rider.previous.copy(rider.position);rider.collisionGrace=Math.max(0,rider.collisionGrace-dt);rider.takeoffCooldown=Math.max(0,rider.takeoffCooldown-dt);state.chroma=Math.max(0,state.chroma-dt*CONFIG.effects.chromaDecay);
       if(state.mode==='TUMBLING'){
-        state.wipeoutLeft-=dt;rider.velocity.y-=CONFIG.physics.gravity*dt;rider.position.addScaledVector(rider.velocity,dt);const ground=heightAt(rider.position.x,rider.position.z)+CONFIG.physics.riderHeight*.45;if(rider.position.y<ground){rider.position.y=ground;rider.velocity.y=Math.abs(rider.velocity.y)*.16;rider.velocity.x*=.96;rider.velocity.z*=.96;}rider.tumbleAngle+=dt*8.5;if(state.wipeoutLeft<=0)endRun();return;
+        state.wipeoutLeft-=dt;rider.velocity.y-=CONFIG.physics.gravity*dt;rider.position.addScaledVector(rider.velocity,dt);enforceTerrainEnvelope();const ground=heightAt(rider.position.x,rider.position.z)+CONFIG.physics.riderHeight*.45;if(rider.position.y<ground){rider.position.y=ground;rider.velocity.y=Math.abs(rider.velocity.y)*.16;rider.velocity.x*=.96;rider.velocity.z*=.96;}rider.tumbleAngle+=dt*8.5;if(state.wipeoutLeft<=0)endRun();return;
       }
       if(state.mode!=='RUNNING')return;
       state.runTime+=dt;state.boost=Math.max(0,state.boost-dt);if(state.comboLeft>0){state.comboLeft-=dt;if(state.comboLeft<=0)resetCombo();}
@@ -2365,11 +2449,11 @@
         if(state.boost>0)forwardSpeed+=CONFIG.physics.boostAcceleration*dt;
         const floor=lerp(CONFIG.physics.floorStart,CONFIG.physics.floorEnd,clamp(state.distance/CONFIG.physics.floorDistance,0,1));forwardSpeed+=Math.min(Math.max(0,floor-forwardSpeed),CONFIG.physics.floorAcceleration*dt);
         forwardSpeed=Math.min(forwardSpeed,speedCap);
-        if(Math.abs(course.lateral)>CONFIG.physics.boundaryStart){const side=Math.sign(course.lateral),penetration=Math.abs(course.lateral)-CONFIG.physics.boundaryStart,boundaryAcceleration=Math.min(CONFIG.physics.lateralAccelLimit,CONFIG.physics.boundaryForce*penetration*penetration),outwardSpeed=lateralSpeed*side,boundaryImpulse=Math.min(boundaryAcceleration*dt,Math.max(0,outwardSpeed+CONFIG.physics.authoritySpeed));lateralSpeed-=side*boundaryImpulse;}
         state.boundary=smoothstep(CONFIG.physics.boundaryStart,CONFIG.physics.assistEnd,Math.abs(course.lateral));
         rider.velocity.copy(physicsForward).multiplyScalar(forwardSpeed).addScaledVector(physicsRight,lateralSpeed);
+        if(Math.abs(course.lateral)>CONFIG.physics.boundaryStart){const side=Math.sign(course.lateral),penetration=Math.abs(course.lateral)-CONFIG.physics.boundaryStart,safetyLimit=CONFIG.terrain.worldHalf-CONFIG.terrain.renderSafetyMargin,emergency=smoothstep(CONFIG.physics.boundaryEmergencyStart,safetyLimit,Math.abs(course.lateral)),boundaryLimit=lerp(CONFIG.physics.lateralAccelLimit,CONFIG.physics.boundaryEmergencyAcceleration,emergency),boundaryAcceleration=Math.min(boundaryLimit,CONFIG.physics.boundaryForce*penetration*penetration);physicsTrackSide.set(trackDir.z,0,-trackDir.x).normalize();const outwardSpeed=side*rider.velocity.dot(physicsTrackSide),boundaryImpulse=Math.min(boundaryAcceleration*dt,Math.max(0,outwardSpeed+CONFIG.physics.authoritySpeed));rider.velocity.addScaledVector(physicsTrackSide,-side*boundaryImpulse);}
         const horizontalSpeed=Math.hypot(rider.velocity.x,rider.velocity.z);if(horizontalSpeed>speedCap){const scale=speedCap/horizontalSpeed;rider.velocity.x*=scale;rider.velocity.z*=scale;}
-        const oldGround=sample.height;rider.position.x+=rider.velocity.x*dt;rider.position.z+=rider.velocity.z*dt;const newGround=heightAt(rider.position.x,rider.position.z),followVy=clamp((newGround-oldGround)/dt,-CONFIG.physics.surfaceVerticalLimit,CONFIG.physics.surfaceVerticalLimit),ballisticVy=rider.surfaceVy-CONFIG.physics.gravity*dt;
+        const oldGround=sample.height;rider.position.x+=rider.velocity.x*dt;rider.position.z+=rider.velocity.z*dt;enforceTerrainEnvelope();const newGround=heightAt(rider.position.x,rider.position.z),followVy=clamp((newGround-oldGround)/dt,-CONFIG.physics.surfaceVerticalLimit,CONFIG.physics.surfaceVerticalLimit),ballisticVy=rider.surfaceVy-CONFIG.physics.gravity*dt;
         if(input.jumpQueued){input.jumpQueued=false;rider.position.y=newGround+CONFIG.physics.riderHeight;beginAir(true);}
         else if(rider.takeoffCooldown<=0&&followVy<ballisticVy-CONFIG.physics.takeoffGapVelocity){rider.velocity.y=lerp(ballisticVy,rider.surfaceVy,.22);rider.position.y=oldGround+CONFIG.physics.riderHeight;beginAir(false);}
         else{rider.position.y=newGround+CONFIG.physics.riderHeight;rider.velocity.y=followVy;rider.surfaceVy=followVy;rider.boardYaw=rider.yaw+(rider.stance<0?Math.PI:0);}
@@ -2377,7 +2461,7 @@
       }else{
         rider.edge=lerp(rider.edge,steer*CONFIG.physics.edgeMax,expEase(3.2,dt));const turn=steer*CONFIG.physics.airTurnRate*dt,c=Math.cos(turn),s=Math.sin(turn),vx=rider.velocity.x,vz=rider.velocity.z;rider.velocity.x=vx*c+vz*s;rider.velocity.z=-vx*s+vz*c;if(state.boost>0){const hs=Math.max(.001,Math.hypot(rider.velocity.x,rider.velocity.z));rider.velocity.x+=rider.velocity.x/hs*CONFIG.physics.boostAcceleration*.45*dt;rider.velocity.z+=rider.velocity.z/hs*CONFIG.physics.boostAcceleration*.45*dt;}const horizontalSpeed=Math.hypot(rider.velocity.x,rider.velocity.z);if(horizontalSpeed>speedCap){const scale=speedCap/horizontalSpeed;rider.velocity.x*=scale;rider.velocity.z*=scale;}rider.velocity.y=Math.max(-CONFIG.physics.terminalVelocity,rider.velocity.y-CONFIG.physics.gravity*dt);rider.airTime+=dt;
         if(spin){const delta=spin*CONFIG.physics.spinRate*smoothstep(0,CONFIG.physics.spinRamp,rider.airTime)*dt;rider.boardYaw+=delta;rider.spinAccum+=delta;rider.spinSign=spin;}else{const flightYaw=Math.atan2(rider.velocity.x,rider.velocity.z),nearest=flightYaw+Math.round((rider.boardYaw-flightYaw)/Math.PI)*Math.PI;rider.boardYaw=lerpAngle(rider.boardYaw,nearest,expEase(3.5,dt));}
-        if(input.grab)rider.grabTime+=dt;rider.position.addScaledVector(rider.velocity,dt);const sample=getHeightAndNormal(rider.position.x,rider.position.z);const groundVy=(-sample.normal.x/sample.normal.y)*rider.velocity.x+(-sample.normal.z/sample.normal.y)*rider.velocity.z;
+        if(input.grab)rider.grabTime+=dt;rider.position.addScaledVector(rider.velocity,dt);enforceTerrainEnvelope();const sample=getHeightAndNormal(rider.position.x,rider.position.z);const groundVy=(-sample.normal.x/sample.normal.y)*rider.velocity.x+(-sample.normal.z/sample.normal.y)*rider.velocity.z;
         if(rider.airTime>.12&&rider.position.y<=sample.height+CONFIG.physics.riderHeight&&rider.velocity.y<=groundVy){const travelYaw=Math.atan2(rider.velocity.x,rider.velocity.z),error=Math.abs(wrapAngle(rider.boardYaw-travelYaw)),isSwitch=error>=CONFIG.physics.switchAngle,clean=error<=CONFIG.physics.cleanLandingAngle||isSwitch,impact=Math.max(0,groundVy-rider.velocity.y);rider.position.y=sample.height+CONFIG.physics.riderHeight;if(clean){rider.grounded=true;state.ride='GROUNDED';rider.stance=isSwitch?-1:1;rider.yaw=travelYaw;rider.boardYaw=travelYaw+(isSwitch?Math.PI:0);rider.velocity.y=groundVy;rider.surfaceVy=groundVy;rider.normal.copy(sample.normal);scoreLanding(isSwitch,impact);}else fatalContact('landing');}
       }
       checkGatesAndObstacles();
@@ -2504,9 +2588,10 @@
     dom.gyroLiveCalibrate.addEventListener('pointerdown',event=>event.stopPropagation());
     dom.gyroLiveCalibrate.addEventListener('click',event=>{event.stopPropagation();beginGyroCalibration();});
     if(gyro.supported)addEventListener('deviceorientation',handleDeviceOrientation,{passive:true});
-    const handleScreenOrientationChange=()=>{clearInputs();if(gyro.enabled)beginGyroCalibration();};
+    const handleScreenOrientationChange=()=>{clearInputs();if(gyro.enabled)beginGyroCalibration();requestAnimationFrame(resizeRendering);};
     if(screen.orientation?.addEventListener)screen.orientation.addEventListener('change',handleScreenOrientationChange);
     else addEventListener('orientationchange',handleScreenOrientationChange);
+    document.addEventListener('fullscreenchange',()=>{const active=!!document.fullscreenElement;fullscreenState.status=active?'active':IS_STANDALONE?'standalone':IS_TOUCH?(FULLSCREEN_SUPPORTED?'available':'unavailable'):'desktop';fullscreenState.lastResult=active?'entered':'exited';updateFullscreenUi(state.mode==='ENDED');requestAnimationFrame(resizeRendering);logEvent('FULLSCREEN',active?'active':'exited');});
 
     renderer.domElement.addEventListener('pointerdown',event=>{
       if(!IS_TOUCH||state.mode!=='RUNNING')return;audio.ensure();renderer.domElement.setPointerCapture(event.pointerId);const fraction=event.clientX/innerWidth,zone=fraction<.4?'left':fraction>.6?'right':'middle';input.pointers.set(event.pointerId,{zone,x:event.clientX,y:event.clientY,time:performance.now()});recalcTouchSteer();event.preventDefault();
@@ -2524,15 +2609,15 @@
       for(let c=firstChunk;c<firstChunk+count;c++){const z=c*CONFIG.terrain.chunkLength+50;mix(track.xAt(z));mix(track.yAt(z));mix(track.curvature(z));const kickers=getKickers(c);mix(kickers.length);for(let i=0;i<kickers.length;i++){mix(kickers[i].z);mix(kickers[i].lateral);mix(kickers[i].amp);}}
       return hash.toString(16).padStart(8,'0');
     }
-    function worldProbe(z,lateral=0){track.lateralFrame(z,centerScratch,sideScratch,dirScratch);const x=centerScratch.x+sideScratch.x*lateral,worldZ=z+sideScratch.z*lateral,sample=getHeightAndNormal(x,worldZ);return{x,y:sample.height,z:worldZ,lateral,normal:[sample.normal.x,sample.normal.y,sample.normal.z],curvature:track.curvature(z)};}
-    function debugSnapshot(){const course=courseCoords(rider.position.x,rider.position.z);return{ready:true,gameState:state.mode,rideState:state.ride,seed:CONFIG.seed,assets:{status:visualAssets.status,source:visualAssets.source,loaded:visualAssets.loaded.slice(),failures:visualAssets.failures.slice()},rider:{position:[rider.position.x,rider.position.y,rider.position.z],speed:Math.hypot(rider.velocity.x,rider.velocity.z),lateral:course.lateral,yaw:rider.yaw,boardYaw:rider.boardYaw,edge:rider.edge,grounded:rider.grounded,airTime:rider.airTime,spin:rider.spinAccum,grab:rider.grabTime,grace:rider.collisionGrace},run:{score:state.score,best:state.best,distance:state.distance,chain:state.chain,multiplier:state.multiplier,comboLeft:state.comboLeft,boost:state.boost,shield:state.shield},controls:{steer:input.steer,touchSteer:input.touchSteer,gyro:{supported:gyro.supported,permission:gyro.permission,status:gyro.status,enabled:gyro.enabled,inverted:gyro.inverted,rawTilt:gyro.rawTilt,neutral:gyro.neutral,target:gyro.target,steer:gyro.steer,samples:gyro.calibrationSamples}},stream:{activeChunks:world.activeIndices(),rebuiltThisFrame:world.rebuiltThisFrame,poolSize:world.slots.length,pickupSlots:pickupSystem.records.length},quality:{tier:state.qualityTier,dpr:renderer.getPixelRatio(),dof:state.dofEnabled,godRays:state.godRaysEnabled,frameMsEma:state.frameMsEma,drawCalls:renderer.info.render.calls,triangles:renderer.info.render.triangles},audio:{created:!!audio.context,state:audio.context?.state||'not-created',activeShots:audio.activeShots,lastShot:audio.lastShot},lastEvent:state.lastEvent,events:state.events.slice()};}
+    function worldProbe(z,lateral=0){track.lateralFrame(z,centerScratch,sideScratch,dirScratch);const x=centerScratch.x+lateral/sideScratch.x,worldZ=z,sample=getHeightAndNormal(x,worldZ);return{x,y:sample.height,z:worldZ,lateral,normal:[sample.normal.x,sample.normal.y,sample.normal.z],curvature:track.curvature(z)};}
+    function debugSnapshot(){const course=courseCoords(rider.position.x,rider.position.z);return{ready:true,gameState:state.mode,rideState:state.ride,seed:CONFIG.seed,assets:{status:visualAssets.status,source:visualAssets.source,loaded:visualAssets.loaded.slice(),failures:visualAssets.failures.slice()},rider:{position:[rider.position.x,rider.position.y,rider.position.z],speed:Math.hypot(rider.velocity.x,rider.velocity.z),lateral:course.lateral,yaw:rider.yaw,boardYaw:rider.boardYaw,edge:rider.edge,grounded:rider.grounded,airTime:rider.airTime,spin:rider.spinAccum,grab:rider.grabTime,grace:rider.collisionGrace},run:{score:state.score,best:state.best,distance:state.distance,chain:state.chain,multiplier:state.multiplier,comboLeft:state.comboLeft,boost:state.boost,shield:state.shield},controls:{steer:input.steer,touchSteer:input.touchSteer,gyro:{supported:gyro.supported,permission:gyro.permission,status:gyro.status,enabled:gyro.enabled,inverted:gyro.inverted,rawTilt:gyro.rawTilt,neutral:gyro.neutral,target:gyro.target,steer:gyro.steer,samples:gyro.calibrationSamples}},display:{touch:IS_TOUCH,ios:IS_IOS,standalone:IS_STANDALONE,fullscreenSupported:FULLSCREEN_SUPPORTED,fullscreenActive:!!document.fullscreenElement,fullscreenStatus:fullscreenState.status,fullscreenAttempts:fullscreenState.attempts,lastFullscreenResult:fullscreenState.lastResult,lastFullscreenError:fullscreenState.lastError,orientationLockSupported:typeof screen.orientation?.lock==='function',orientationStatus:fullscreenState.orientation,installHintVisible:!dom.installHint.hidden},stream:{activeChunks:world.activeIndices(),rebuiltThisFrame:world.rebuiltThisFrame,poolSize:world.slots.length,pickupSlots:pickupSystem.records.length},quality:{tier:state.qualityTier,dpr:renderer.getPixelRatio(),dof:state.dofEnabled,godRays:state.godRaysEnabled,frameMsEma:state.frameMsEma,drawCalls:renderer.info.render.calls,triangles:renderer.info.render.triangles},audio:{created:!!audio.context,state:audio.context?.state||'not-created',activeShots:audio.activeShots,lastShot:audio.lastShot},lastEvent:state.lastEvent,events:state.events.slice()};}
 
     const debugEnabled=new URLSearchParams(location.search).has('debug');
-    const debugApi={snapshot:debugSnapshot,worldProbe,deterministicSignature};
-    if(debugEnabled)Object.assign(debugApi,{pauseSimulation:value=>state.paused=!!value,step:(frames=1,dt=CONFIG.physics.fixedStep)=>{for(let i=0;i<frames;i++)physicsStep(dt);return debugSnapshot();},setInput:values=>{if(Number.isFinite(values.steer))input.touchSteer=clamp(values.steer,-1,1);if('tuck'in values){if(values.tuck)input.keys.add('KeyW');else input.keys.delete('KeyW');}if(Number.isFinite(values.spin)){input.touchSpin=values.spin!==0;input.lastTouchSteer=Math.sign(values.spin)||1;}if('grab'in values){if(values.grab)input.keys.add('KeyS');else input.keys.delete('KeyS');}},pulse:action=>{if(action==='jump')input.jumpQueued=true;else if(action==='respawn')respawn();},gyroMath:(beta,gamma,angle=0)=>orientationTilt(beta,gamma,angle),gyroEnable:()=>{gyro.permission='granted';gyro.enabled=true;beginGyroCalibration();return debugSnapshot();},gyroSample:({beta=0,gamma=0,angle=currentScreenAngle(),time=performance.now()}={})=>{const tilt=orientationTilt(beta,gamma,angle);if(tilt!==null)acceptGyroTilt(tilt,time);return debugSnapshot();},teleport:({distance=state.distance,lateral=0,heightOffset=0,speed=20,yawOffset=0}={})=>{const z=state.startZ+distance;track.lateralFrame(z,centerScratch,sideScratch,dirScratch);rider.position.set(centerScratch.x+sideScratch.x*lateral,heightAt(centerScratch.x+sideScratch.x*lateral,z+sideScratch.z*lateral)+CONFIG.physics.riderHeight+heightOffset,z+sideScratch.z*lateral);rider.yaw=Math.atan2(dirScratch.x,dirScratch.z)+yawOffset;rider.boardYaw=rider.yaw;rider.velocity.set(Math.sin(rider.yaw)*speed,0,Math.cos(rider.yaw)*speed);rider.grounded=heightOffset<=0;state.ride=rider.grounded?'GROUNDED':'AIRBORNE';world.update(rider.position.z);return debugSnapshot();},grant:kind=>{if(kind==='boost')state.boost=CONFIG.pickups.boostSeconds;else if(kind==='shield')state.shield=true;else award(CONFIG.pickups.orbScore,'ORB');return debugSnapshot();},collide:kind=>{fatalContact(kind);return debugSnapshot();},forceGate:outcome=>{if(outcome==='pass')award(CONFIG.pickups.gateScore,'GATE');else{resetCombo();popup('GATE MISSED','bad');}return debugSnapshot();},forceQualityStep:()=>{stepQuality();return debugSnapshot();}});
+    const debugApi={snapshot:debugSnapshot,worldProbe,deterministicSignature,fullscreenPolicy};
+    if(debugEnabled)Object.assign(debugApi,{pauseSimulation:value=>state.paused=!!value,step:(frames=1,dt=CONFIG.physics.fixedStep)=>{for(let i=0;i<frames;i++)physicsStep(dt);return debugSnapshot();},setInput:values=>{if(Number.isFinite(values.steer))input.touchSteer=clamp(values.steer,-1,1);if('tuck'in values){if(values.tuck)input.keys.add('KeyW');else input.keys.delete('KeyW');}if(Number.isFinite(values.spin)){input.touchSpin=values.spin!==0;input.lastTouchSteer=Math.sign(values.spin)||1;}if('grab'in values){if(values.grab)input.keys.add('KeyS');else input.keys.delete('KeyS');}},pulse:action=>{if(action==='jump')input.jumpQueued=true;else if(action==='respawn')respawn();},gyroMath:(beta,gamma,angle=0)=>orientationTilt(beta,gamma,angle),gyroEnable:()=>{gyro.permission='granted';gyro.enabled=true;beginGyroCalibration();return debugSnapshot();},gyroSample:({beta=0,gamma=0,angle=currentScreenAngle(),time=performance.now()}={})=>{const tilt=orientationTilt(beta,gamma,angle);if(tilt!==null)acceptGyroTilt(tilt,time);return debugSnapshot();},teleport:({distance=state.distance,lateral=0,heightOffset=0,speed=20,yawOffset=0}={})=>{const z=state.startZ+distance;track.lateralFrame(z,centerScratch,sideScratch,dirScratch);const x=centerScratch.x+lateral/sideScratch.x;rider.position.set(x,heightAt(x,z)+CONFIG.physics.riderHeight+heightOffset,z);rider.yaw=Math.atan2(dirScratch.x,dirScratch.z)+yawOffset;rider.boardYaw=rider.yaw;rider.velocity.set(Math.sin(rider.yaw)*speed,0,Math.cos(rider.yaw)*speed);rider.grounded=heightOffset<=0;state.ride=rider.grounded?'GROUNDED':'AIRBORNE';world.update(rider.position.z);return debugSnapshot();},grant:kind=>{if(kind==='boost')state.boost=CONFIG.pickups.boostSeconds;else if(kind==='shield')state.shield=true;else award(CONFIG.pickups.orbScore,'ORB');return debugSnapshot();},collide:kind=>{fatalContact(kind);return debugSnapshot();},forceGate:outcome=>{if(outcome==='pass')award(CONFIG.pickups.gateScore,'GATE');else{resetCombo();popup('GATE MISSED','bad');}return debugSnapshot();},forceQualityStep:()=>{stepQuality();return debugSnapshot();}});
     window.__ALPINE_DEBUG__=debugApi;window.__ALPINE_CONFIG__=CONFIG;window.__ALPINE_ASSETS__=visualAssets;
 
-    updateGyroUi();initialRiderPose();camera.position.set(rider.position.x+CONFIG.camera.menuRadius,rider.position.y+CONFIG.camera.menuHeight,rider.position.z);camera.lookAt(rider.position);resizeRendering();document.body.dataset.gameState='menu';
+    updateGyroUi();updateFullscreenUi();initialRiderPose();camera.position.set(rider.position.x+CONFIG.camera.menuRadius,rider.position.y+CONFIG.camera.menuHeight,rider.position.z);camera.lookAt(rider.position);resizeRendering();document.body.dataset.gameState='menu';
     try{renderer.compile(scene,camera);}catch(error){showError(error.stack||error.message);}
 
     let lastFrame=performance.now();
