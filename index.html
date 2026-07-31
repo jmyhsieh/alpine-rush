@@ -405,7 +405,9 @@
         cyan: 0x4FD8FF, gold: 0xF4B93D, shield: 0xF4FBFF,
         redGate: 0xE8493E, blueGate: 0x327CD6, orange: 0xE8552D,
         boardEmissive: 0x3A0B03, jacketEmissive: 0x3B0E05,
-        jacketShadow: 0xC34529, helmetEmissive: 0x3A2400, contactShadow: 0x315B7C
+        jacketShadow: 0xC34529, helmetEmissive: 0x3A2400, contactShadow: 0x315B7C,
+        boardEdge: 0x17354B, boardStripe: 0xF4B93D, binding: 0x102534,
+        jacketAccent: 0xFFD269, glove: 0x173B59, goggleBand: 0x17334A
       },
       track: {
         pointSpacing: 30, initialBehind: 12, lazyAhead: 1500,
@@ -441,6 +443,8 @@
       },
       assets: {
         basePath: './assets/kaykit-forest/', loadTimeoutMs: 8000,
+        alpinePath: './assets/alpine-rush/', bitmapTimeoutMs: 3500,
+        snowDetailFile: 'snow-detail.png', powderAtlasFile: 'powder-atlas.png',
         treeFiles: ['Tree_4_A_Color1.gltf', 'Tree_4_B_Color1.gltf', 'Tree_4_C_Color1.gltf'],
         treeTargetHeights: [5.25, 5.65, 6.15], treeSnowStrength: 0.82,
         rockFile: 'Rock_1_J_Color1.gltf', rockTargetHeight: 1.45, rockSnowStrength: 0.74,
@@ -508,6 +512,7 @@
         gradeHighlightGain: [1.035, 1.012, 0.975],
         highlightShoulder: 0.11, snowGrooveStrength: 0.052,
         snowNormalStrength: 0.030, snowSlopeTint: 0.18, snowSparkle: 2.5,
+        snowDetailScale: 0.055, snowDetailStrength: 0.055, powderAtlasGrid: 2,
         riderBoardEmissive: 0.07, riderJacketEmissive: 0.10,
         riderJacketShadowEmissive: 0.06, riderHelmetEmissive: 0.08,
         riderShadowOpacity: 0.24, riderShadowAirFade: 4.2,
@@ -1155,14 +1160,22 @@
     const haloSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: sunTexture, color: 0xFFD18A, transparent: true, opacity: .36, blending: THREE.AdditiveBlending, depthWrite: false }));
     haloSprite.scale.set(62,62,1); haloSprite.layers.set(1); haloSprite.layers.enable(BLOOM_LAYER); scene.add(haloSprite);
 
+    const phaseOneAssets = { rider: 'loaded', snowDetail: 'loading', powderAtlas: 'loading', loaded: [], failures: [] };
+    const snowDetailFallback = new THREE.DataTexture(new Uint8Array([128,128,128,255]),1,1,THREE.RGBAFormat);
+    snowDetailFallback.generateMipmaps=false;snowDetailFallback.minFilter=THREE.NearestFilter;snowDetailFallback.magFilter=THREE.NearestFilter;snowDetailFallback.colorSpace=THREE.NoColorSpace;snowDetailFallback.needsUpdate=true;
+    const snowDetailUniforms = {
+      snowDetailMap: { value: snowDetailFallback }, snowDetailReady: { value: 0 },
+      snowDetailScale: { value: CONFIG.effects.snowDetailScale }
+    };
     const decorMaterial = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.88, metalness: 0, flatShading: true });
     const snowMaterial = new THREE.MeshStandardMaterial({ color: CONFIG.colors.snow, vertexColors: true, roughness: CONFIG.terrain.snowRoughness, metalness: 0, flatShading: false });
     snowMaterial.onBeforeCompile = shader => {
+      Object.assign(shader.uniforms,snowDetailUniforms);
       shader.vertexShader = shader.vertexShader
         .replace('#include <common>', `#include <common>\nattribute float lateral; varying float vLateral; varying vec3 vSnowWorld; varying float vSnowDepth; varying vec3 vSnowNormal;`)
         .replace('#include <project_vertex>', `#include <project_vertex>\nvLateral=lateral; vSnowWorld=(modelMatrix*vec4(transformed,1.0)).xyz; vSnowDepth=-mvPosition.z; vSnowNormal=normalize(mat3(modelMatrix)*objectNormal);`);
       shader.fragmentShader = shader.fragmentShader
-        .replace('#include <common>', `#include <common>\nvarying float vLateral; varying vec3 vSnowWorld; varying float vSnowDepth; varying vec3 vSnowNormal;\nfloat snowHash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453123);}`)
+        .replace('#include <common>', `#include <common>\nvarying float vLateral; varying vec3 vSnowWorld; varying float vSnowDepth; varying vec3 vSnowNormal;\nuniform sampler2D snowDetailMap; uniform float snowDetailReady; uniform float snowDetailScale;\nfloat snowHash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453123);}`)
         .replace('#include <color_fragment>', `#include <color_fragment>
           float piste=1.0-smoothstep(15.2,17.8,abs(vLateral));
           float detailFade=1.0-smoothstep(38.0,108.0,vSnowDepth);
@@ -1172,11 +1185,13 @@
           float rib=pow(abs(cos(cordPhase)),18.0);
           float edgeBand=exp(-pow((abs(vLateral)-16.0)*.55,2.0));
           float offPiste=smoothstep(16.0,27.0,abs(vLateral));
-          float windSlab=snowHash(floor(vSnowWorld.xz*.30))-.5;
+          float proceduralSlab=snowHash(floor(vSnowWorld.xz*.30));
+          float assetSlab=snowDetailReady>.5?texture2D(snowDetailMap,vSnowWorld.xz*snowDetailScale).r:proceduralSlab;
+          float windSlab=assetSlab-.5;
           float slope=1.0-clamp(vSnowNormal.y,0.0,1.0);
           diffuseColor.rgb*=1.0-groove*piste*detailFade*${CONFIG.effects.snowGrooveStrength.toFixed(3)}-edgeBand*.078;
           diffuseColor.rgb+=vec3(.014,.023,.038)*rib*piste*detailFade;
-          diffuseColor.rgb*=1.0+windSlab*(.012+.022*offPiste);
+          diffuseColor.rgb*=1.0+windSlab*(.012+.022*offPiste+${CONFIG.effects.snowDetailStrength.toFixed(3)}*detailFade*snowDetailReady);
           diffuseColor.rgb=mix(diffuseColor.rgb,diffuseColor.rgb*vec3(.82,.91,1.075),offPiste*.44);
           diffuseColor.rgb=mix(diffuseColor.rgb,diffuseColor.rgb*vec3(.86,.94,1.08),slope*${CONFIG.effects.snowSlopeTint.toFixed(3)});`)
         .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
@@ -1192,7 +1207,7 @@
           reflectedLight.directSpecular+=vec3(.72,.90,1.0)*sparkle;`);
       snowMaterial.userData.shader = shader;
     };
-    snowMaterial.customProgramCacheKey = () => 'alpine-snow-r160-v4';
+    snowMaterial.customProgramCacheKey = () => 'alpine-snow-r160-v5';
 
     function loadGltfWithTimeout(loader, url) {
       return new Promise((resolve, reject) => {
@@ -1576,45 +1591,66 @@
       mesh.castShadow = true; mesh.receiveShadow = false; parent.add(mesh); return mesh;
     }
 
+    function makeSnowboardGeometry() {
+      const sections=[[-1.54,.29,.11],[-1.38,.40,.045],[-.68,.32,0],[0,.27,0],[.68,.32,0],[1.38,.40,.045],[1.54,.29,.11]],top=[],edge=[],thickness=.085;
+      const tri=(target,a,b,c)=>target.push(...a,...b,...c),quad=(target,a,b,c,d)=>{tri(target,a,b,d);tri(target,b,c,d);};
+      for(let i=0;i<sections.length-1;i++){
+        const [z0,w0,y0]=sections[i],[z1,w1,y1]=sections[i+1],a=[-w0,y0,z0],b=[w0,y0,z0],c=[w1,y1,z1],d=[-w1,y1,z1];
+        quad(top,a,d,c,b);
+        const ab=[-w0,y0-thickness,z0],bb=[w0,y0-thickness,z0],cb=[w1,y1-thickness,z1],db=[-w1,y1-thickness,z1];
+        quad(edge,ab,bb,cb,db);quad(edge,a,ab,db,d);quad(edge,b,c,cb,bb);
+      }
+      const [zs,ws,ys]=sections[0],[ze,we,ye]=sections[sections.length-1];
+      quad(edge,[-ws,ys,zs],[ws,ys,zs],[ws,ys-thickness,zs],[-ws,ys-thickness,zs]);
+      quad(edge,[-we,ye,ze],[-we,ye-thickness,ze],[we,ye-thickness,ze],[we,ye,ze]);
+      const geometry=new THREE.BufferGeometry(),positions=new Float32Array(top.length+edge.length);positions.set(top);positions.set(edge,top.length);geometry.setAttribute('position',new THREE.BufferAttribute(positions,3));geometry.addGroup(0,top.length/3,0);geometry.addGroup(top.length/3,edge.length/3,1);geometry.computeVertexNormals();geometry.computeBoundingBox();geometry.computeBoundingSphere();return geometry;
+    }
+
     const riderMaterials = {
-      board: new THREE.MeshStandardMaterial({ color: CONFIG.colors.orange, roughness: .56, flatShading: true, emissive: CONFIG.colors.boardEmissive, emissiveIntensity: CONFIG.effects.riderBoardEmissive }),
-      jacket: new THREE.MeshStandardMaterial({ color: CONFIG.colors.jacket, roughness: .86, flatShading: true, emissive: CONFIG.colors.jacketEmissive, emissiveIntensity: CONFIG.effects.riderJacketEmissive }),
+      board: new THREE.MeshStandardMaterial({ color: CONFIG.colors.orange, roughness: .52, flatShading: true, emissive: CONFIG.colors.boardEmissive, emissiveIntensity: CONFIG.effects.riderBoardEmissive }),
+      boardEdge: new THREE.MeshStandardMaterial({ color: CONFIG.colors.boardEdge, roughness: .7, flatShading: true }),
+      boardStripe: new THREE.MeshStandardMaterial({ color: CONFIG.colors.boardStripe, roughness: .58, flatShading: true, emissive: 0x392000, emissiveIntensity: .08 }),
+      binding: new THREE.MeshStandardMaterial({ color: CONFIG.colors.binding, roughness: .8, flatShading: true }),
+      jacket: new THREE.MeshStandardMaterial({ color: CONFIG.colors.jacket, roughness: .82, flatShading: true, emissive: CONFIG.colors.jacketEmissive, emissiveIntensity: CONFIG.effects.riderJacketEmissive }),
       jacketShadow: new THREE.MeshStandardMaterial({ color: CONFIG.colors.jacketShadow, roughness: .9, flatShading: true, emissive: CONFIG.colors.jacketEmissive, emissiveIntensity: CONFIG.effects.riderJacketShadowEmissive }),
+      jacketAccent: new THREE.MeshStandardMaterial({ color: CONFIG.colors.jacketAccent, roughness: .72, flatShading: true }),
       pants: new THREE.MeshStandardMaterial({ color: 0x263849, roughness: .88, flatShading: true }),
       boot: new THREE.MeshStandardMaterial({ color: 0x162431, roughness: .9, flatShading: true }),
-      skin: new THREE.MeshStandardMaterial({ color: 0xE8B08D, roughness: .88, flatShading: true }),
-      helmet: new THREE.MeshStandardMaterial({ color: CONFIG.colors.helmet, roughness: .68, flatShading: true, emissive: CONFIG.colors.helmetEmissive, emissiveIntensity: CONFIG.effects.riderHelmetEmissive }),
-      goggles: new THREE.MeshStandardMaterial({ color: CONFIG.colors.goggles, roughness: .22, metalness: .12, flatShading: true, emissive: 0x063A69, emissiveIntensity: .28 })
+      glove: new THREE.MeshStandardMaterial({ color: CONFIG.colors.glove, roughness: .82, flatShading: true }),
+      helmet: new THREE.MeshStandardMaterial({ color: CONFIG.colors.helmet, roughness: .64, flatShading: true, emissive: CONFIG.colors.helmetEmissive, emissiveIntensity: CONFIG.effects.riderHelmetEmissive }),
+      helmetAccent: new THREE.MeshStandardMaterial({ color: 0xFFE08A, roughness: .6, flatShading: true }),
+      goggles: new THREE.MeshStandardMaterial({ color: CONFIG.colors.goggles, roughness: .18, metalness: .16, flatShading: true, emissive: 0x063A69, emissiveIntensity: .34 }),
+      goggleBand: new THREE.MeshStandardMaterial({ color: CONFIG.colors.goggleBand, roughness: .72, flatShading: true })
     };
 
     function createRider() {
       const root = new THREE.Group(); root.name = 'rider-root';
       const boardTilt = new THREE.Group(); boardTilt.name = 'board-edge-tilt'; root.add(boardTilt);
       const character = new THREE.Group(); character.name = 'rider-character'; boardTilt.add(character);
-      const boardGeometry = new THREE.CapsuleGeometry(.42, 2.65, 4, 10);
-      boardGeometry.rotateX(Math.PI * .5);
-      const board = meshWithMaterial(boardGeometry, riderMaterials.board, boardTilt, [0, .02, 0], [1, .10, 1.12]);
-      board.name = 'rounded-snowboard';
-      meshWithMaterial(new THREE.BoxGeometry(.42,.22,.7), riderMaterials.boot, character, [-.38,.38,-.34], [1,1,1], [0,.25,0]);
-      meshWithMaterial(new THREE.BoxGeometry(.42,.22,.7), riderMaterials.boot, character, [.38,.38,.34], [1,1,1], [0,.25,0]);
+      const board = meshWithMaterial(makeSnowboardGeometry(), [riderMaterials.board,riderMaterials.boardEdge], boardTilt, [0,.035,0], [1,1,1]);board.name='sidecut-snowboard';
+      const boardStripe=meshWithMaterial(new THREE.BoxGeometry(.085,.018,1.65),riderMaterials.boardStripe,boardTilt,[0,.052,0],[1,1,1]);boardStripe.name='board-center-stripe';
+      const bindingGeometry=new THREE.BoxGeometry(.55,.18,.38),bootGeometry=new THREE.CapsuleGeometry(.17,.42,2,5);bootGeometry.rotateX(Math.PI*.5);
+      meshWithMaterial(bindingGeometry,riderMaterials.binding,character,[-.38,.14,-.34],[1,1,1],[0,.25,0]);meshWithMaterial(bindingGeometry,riderMaterials.binding,character,[.38,.14,.34],[1,1,1],[0,.25,0]);
+      meshWithMaterial(bootGeometry,riderMaterials.boot,character,[-.38,.39,-.34],[1,.85,1],[0,.25,0]);meshWithMaterial(bootGeometry,riderMaterials.boot,character,[.38,.39,.34],[1,.85,1],[0,.25,0]);
       const leftLeg = new THREE.Group(), rightLeg = new THREE.Group();
       leftLeg.position.set(-.38,.48,-.30); rightLeg.position.set(.38,.48,.30); character.add(leftLeg,rightLeg);
       meshWithMaterial(new THREE.CylinderGeometry(.12,.17,.72,5,1,false), riderMaterials.pants, leftLeg, [0,.34,0], [1,1,1], [.28,0,-.16]);
       meshWithMaterial(new THREE.CylinderGeometry(.12,.17,.72,5,1,false), riderMaterials.pants, rightLeg, [0,.34,0], [1,1,1], [-.28,0,.16]);
       const torso = new THREE.Group(); torso.position.set(0,1.34,0); torso.rotation.y = -.38; character.add(torso);
-      meshWithMaterial(new THREE.DodecahedronGeometry(.58,0), riderMaterials.jacket, torso, [0,.18,0], [.78,1.20,.68]);
-      meshWithMaterial(new THREE.CylinderGeometry(.44,.56,.38,6,1,false), riderMaterials.jacketShadow, torso, [0,-.28,0], [.82,1,.72]);
+      const jacket=meshWithMaterial(new THREE.CylinderGeometry(.51,.40,1.08,7,2,false),riderMaterials.jacket,torso,[0,.17,0],[1,1,.74]);jacket.name='tailored-jacket-shell';
+      meshWithMaterial(new THREE.CylinderGeometry(.40,.43,.22,7,1,false),riderMaterials.jacketShadow,torso,[0,-.38,0],[1,1,.73]);
+      meshWithMaterial(new THREE.CylinderGeometry(.28,.34,.18,7,1,false),riderMaterials.jacketShadow,torso,[0,.73,0],[1,1,.82]);
+      meshWithMaterial(new THREE.BoxGeometry(.52,.105,.038),riderMaterials.jacketAccent,torso,[0,.30,-.365],[1,1,1],[-.18,0,0]);
       const armL = new THREE.Group(), armR = new THREE.Group();
       armL.position.set(-.48,.40,0); armR.position.set(.48,.40,0); torso.add(armL,armR);
-      meshWithMaterial(new THREE.BoxGeometry(.20,.76,.20), riderMaterials.jacket, armL, [-.18,-.1,0], [1,1,1], [0,0,-1.05]);
-      meshWithMaterial(new THREE.BoxGeometry(.20,.76,.20), riderMaterials.jacket, armR, [.18,-.1,0], [1,1,1], [0,0,1.05]);
-      meshWithMaterial(new THREE.BoxGeometry(.19,.19,.19), riderMaterials.skin, armL, [-.48,-.42,0], [1,1,1]);
-      meshWithMaterial(new THREE.BoxGeometry(.19,.19,.19), riderMaterials.skin, armR, [.48,-.42,0], [1,1,1]);
+      const sleeveGeometry=new THREE.CapsuleGeometry(.11,.52,2,5),gloveGeometry=new THREE.DodecahedronGeometry(.15,0);
+      meshWithMaterial(sleeveGeometry,riderMaterials.jacket,armL,[-.18,-.1,0],[1,1,1],[0,0,-1.05]);meshWithMaterial(sleeveGeometry,riderMaterials.jacket,armR,[.18,-.1,0],[1,1,1],[0,0,1.05]);
+      meshWithMaterial(gloveGeometry,riderMaterials.glove,armL,[-.48,-.42,0],[1,1,1]);meshWithMaterial(gloveGeometry,riderMaterials.glove,armR,[.48,-.42,0],[1,1,1]);
       const head = new THREE.Group(); head.position.set(0,.92,0); torso.add(head);
-      meshWithMaterial(new THREE.DodecahedronGeometry(.32,0), riderMaterials.helmet, head, [0,0,0], [1,1.05,1]);
-      meshWithMaterial(new THREE.BoxGeometry(.55,.16,.10), riderMaterials.goggles, head, [0,.02,.27], [1,1,1], [-.08,0,0]);
-      meshWithMaterial(new THREE.BoxGeometry(.10,.14,.40), riderMaterials.goggles, head, [-.28,.02,.04], [1,1,1]);
-      meshWithMaterial(new THREE.BoxGeometry(.10,.14,.40), riderMaterials.goggles, head, [.28,.02,.04], [1,1,1]);
+      meshWithMaterial(new THREE.DodecahedronGeometry(.32,0),riderMaterials.helmet,head,[0,0,0],[1.05,1.10,1.02]);
+      meshWithMaterial(new THREE.BoxGeometry(.42,.075,.20),riderMaterials.helmetAccent,head,[0,-.15,.22],[1,1,1],[-.06,0,0]);
+      meshWithMaterial(new THREE.TorusGeometry(.29,.035,4,12),riderMaterials.goggleBand,head,[0,.015,0],[1,1,1],[Math.PI*.5,0,0]);
+      const visorGeometry=new THREE.CapsuleGeometry(.095,.39,2,7);visorGeometry.rotateZ(Math.PI*.5);const visor=meshWithMaterial(visorGeometry,riderMaterials.goggles,head,[0,.015,.285],[1,1,.58],[-.08,0,0]);visor.name='wraparound-goggle-lens';
       scene.add(root);
       root.traverse(object => { if (object.isMesh) object.castShadow = true; });
       return { root, boardTilt, character, torso, armL, armR, leftLeg, rightLeg, board };
@@ -1897,18 +1933,20 @@
         this.count = count; this.cursor = 0; this.baseSize = baseSize;
         this.positions = new Float32Array(count * 3); this.velocities = new Float32Array(count * 3);
         this.life = new Float32Array(count); this.maxLife = new Float32Array(count);
-        this.size = new Float32Array(count); this.alpha = new Float32Array(count);
+        this.size = new Float32Array(count); this.alpha = new Float32Array(count); this.variant = new Float32Array(count);
         this.color = new Float32Array(count * 3);
+        for(let i=0;i<count;i++)this.variant[i]=i%(CONFIG.effects.powderAtlasGrid*CONFIG.effects.powderAtlasGrid);
         const geometry = new THREE.BufferGeometry();
         geometry.setAttribute('position', new THREE.BufferAttribute(this.positions, 3).setUsage(THREE.DynamicDrawUsage));
         geometry.setAttribute('pSize', new THREE.BufferAttribute(this.size, 1).setUsage(THREE.DynamicDrawUsage));
         geometry.setAttribute('pAlpha', new THREE.BufferAttribute(this.alpha, 1).setUsage(THREE.DynamicDrawUsage));
         geometry.setAttribute('pColor', new THREE.BufferAttribute(this.color, 3).setUsage(THREE.DynamicDrawUsage));
+        geometry.setAttribute('pVariant', new THREE.BufferAttribute(this.variant, 1));
         const material = new THREE.ShaderMaterial({
           transparent: true, depthWrite: false, blending: additive ? THREE.AdditiveBlending : THREE.NormalBlending,
-          uniforms: { map: { value: particleTexture }, pixelRatio: { value: renderer.getPixelRatio() } },
-          vertexShader: `attribute float pSize; attribute float pAlpha; attribute vec3 pColor; varying float vAlpha; varying vec3 vColor; uniform float pixelRatio; void main(){vec4 mv=modelViewMatrix*vec4(position,1.0);gl_Position=projectionMatrix*mv;gl_PointSize=clamp(pSize*pixelRatio*300.0/max(1.0,-mv.z),1.0,90.0);vAlpha=pAlpha;vColor=pColor;}`,
-          fragmentShader: `uniform sampler2D map; varying float vAlpha; varying vec3 vColor; void main(){vec4 tex=texture2D(map,gl_PointCoord);gl_FragColor=vec4(vColor,tex.a*vAlpha);}`
+          uniforms: { map: { value: particleTexture }, pixelRatio: { value: renderer.getPixelRatio() }, atlasGrid: { value: 1 } },
+          vertexShader: `attribute float pSize; attribute float pAlpha; attribute float pVariant; attribute vec3 pColor; varying float vAlpha; varying float vVariant; varying vec3 vColor; uniform float pixelRatio; void main(){vec4 mv=modelViewMatrix*vec4(position,1.0);gl_Position=projectionMatrix*mv;gl_PointSize=clamp(pSize*pixelRatio*300.0/max(1.0,-mv.z),1.0,90.0);vAlpha=pAlpha;vVariant=pVariant;vColor=pColor;}`,
+          fragmentShader: `uniform sampler2D map; uniform float atlasGrid; varying float vAlpha; varying float vVariant; varying vec3 vColor; void main(){float grid=max(1.0,atlasGrid),variant=mod(vVariant,grid*grid);vec2 cell=vec2(mod(variant,grid),floor(variant/grid));vec4 tex=texture2D(map,(gl_PointCoord+cell)/grid);gl_FragColor=vec4(vColor,tex.a*vAlpha);}`
         });
         this.points = new THREE.Points(geometry, material); this.points.frustumCulled = false; scene.add(this.points);
       }
@@ -1944,6 +1982,15 @@
     const sprayPool = new ParticlePool(CONFIG.effects.sprayCount, true, .012);
     const powderPool = new ParticlePool(CONFIG.effects.powderCount, false, .18);
     sprayPool.points.layers.enable(BLOOM_LAYER);
+
+    function loadPhaseOneBitmap(key,file,configure) {
+      const url=CONFIG.assets.alpinePath+file,loader=new THREE.TextureLoader();let settled=false;
+      const fail=error=>{if(settled)return;settled=true;phaseOneAssets[key]='fallback';phaseOneAssets.failures.push(`${file}: ${error?.message||error||'load failed'}`);console.warn(`ALPINE RUSH ${key} fallback active`);};
+      const timeout=setTimeout(()=>fail(new Error(`Timed out loading ${url}`)),CONFIG.assets.bitmapTimeoutMs);
+      loader.load(url,texture=>{if(settled){texture.dispose();return;}settled=true;clearTimeout(timeout);texture.colorSpace=THREE.NoColorSpace;texture.minFilter=THREE.LinearMipmapLinearFilter;texture.magFilter=THREE.LinearFilter;texture.generateMipmaps=true;texture.anisotropy=IS_MOBILE?1:Math.min(2,renderer.capabilities.getMaxAnisotropy());configure(texture);phaseOneAssets[key]='loaded';phaseOneAssets.loaded.push(file);},undefined,error=>{clearTimeout(timeout);fail(error);});
+    }
+    loadPhaseOneBitmap('snowDetail',CONFIG.assets.snowDetailFile,texture=>{texture.wrapS=texture.wrapT=THREE.RepeatWrapping;snowDetailUniforms.snowDetailMap.value=texture;snowDetailUniforms.snowDetailReady.value=1;});
+    loadPhaseOneBitmap('powderAtlas',CONFIG.assets.powderAtlasFile,texture=>{texture.wrapS=texture.wrapT=THREE.ClampToEdgeWrapping;powderPool.points.material.uniforms.map.value=texture;powderPool.points.material.uniforms.atlasGrid.value=CONFIG.effects.powderAtlasGrid;});
 
     function spawnBurst(x, y, z, color, count = 28, strength = 1) {
       for (let i = 0; i < count; i++) {
@@ -2610,12 +2657,12 @@
       return hash.toString(16).padStart(8,'0');
     }
     function worldProbe(z,lateral=0){track.lateralFrame(z,centerScratch,sideScratch,dirScratch);const x=centerScratch.x+lateral/sideScratch.x,worldZ=z,sample=getHeightAndNormal(x,worldZ);return{x,y:sample.height,z:worldZ,lateral,normal:[sample.normal.x,sample.normal.y,sample.normal.z],curvature:track.curvature(z)};}
-    function debugSnapshot(){const course=courseCoords(rider.position.x,rider.position.z);return{ready:true,gameState:state.mode,rideState:state.ride,seed:CONFIG.seed,assets:{status:visualAssets.status,source:visualAssets.source,loaded:visualAssets.loaded.slice(),failures:visualAssets.failures.slice()},rider:{position:[rider.position.x,rider.position.y,rider.position.z],speed:Math.hypot(rider.velocity.x,rider.velocity.z),lateral:course.lateral,yaw:rider.yaw,boardYaw:rider.boardYaw,edge:rider.edge,grounded:rider.grounded,airTime:rider.airTime,spin:rider.spinAccum,grab:rider.grabTime,grace:rider.collisionGrace},run:{score:state.score,best:state.best,distance:state.distance,chain:state.chain,multiplier:state.multiplier,comboLeft:state.comboLeft,boost:state.boost,shield:state.shield},controls:{steer:input.steer,touchSteer:input.touchSteer,gyro:{supported:gyro.supported,permission:gyro.permission,status:gyro.status,enabled:gyro.enabled,inverted:gyro.inverted,rawTilt:gyro.rawTilt,neutral:gyro.neutral,target:gyro.target,steer:gyro.steer,samples:gyro.calibrationSamples}},display:{touch:IS_TOUCH,ios:IS_IOS,standalone:IS_STANDALONE,fullscreenSupported:FULLSCREEN_SUPPORTED,fullscreenActive:!!document.fullscreenElement,fullscreenStatus:fullscreenState.status,fullscreenAttempts:fullscreenState.attempts,lastFullscreenResult:fullscreenState.lastResult,lastFullscreenError:fullscreenState.lastError,orientationLockSupported:typeof screen.orientation?.lock==='function',orientationStatus:fullscreenState.orientation,installHintVisible:!dom.installHint.hidden},stream:{activeChunks:world.activeIndices(),rebuiltThisFrame:world.rebuiltThisFrame,poolSize:world.slots.length,pickupSlots:pickupSystem.records.length},quality:{tier:state.qualityTier,dpr:renderer.getPixelRatio(),dof:state.dofEnabled,godRays:state.godRaysEnabled,frameMsEma:state.frameMsEma,drawCalls:renderer.info.render.calls,triangles:renderer.info.render.triangles},audio:{created:!!audio.context,state:audio.context?.state||'not-created',activeShots:audio.activeShots,lastShot:audio.lastShot},lastEvent:state.lastEvent,events:state.events.slice()};}
+    function debugSnapshot(){const course=courseCoords(rider.position.x,rider.position.z);return{ready:true,gameState:state.mode,rideState:state.ride,seed:CONFIG.seed,assets:{status:visualAssets.status,source:visualAssets.source,loaded:visualAssets.loaded.slice(),failures:visualAssets.failures.slice(),phase1:{rider:phaseOneAssets.rider,snowDetail:phaseOneAssets.snowDetail,powderAtlas:phaseOneAssets.powderAtlas,loaded:phaseOneAssets.loaded.slice(),failures:phaseOneAssets.failures.slice()}},rider:{position:[rider.position.x,rider.position.y,rider.position.z],speed:Math.hypot(rider.velocity.x,rider.velocity.z),lateral:course.lateral,yaw:rider.yaw,boardYaw:rider.boardYaw,edge:rider.edge,grounded:rider.grounded,airTime:rider.airTime,spin:rider.spinAccum,grab:rider.grabTime,grace:rider.collisionGrace},run:{score:state.score,best:state.best,distance:state.distance,chain:state.chain,multiplier:state.multiplier,comboLeft:state.comboLeft,boost:state.boost,shield:state.shield},controls:{steer:input.steer,touchSteer:input.touchSteer,gyro:{supported:gyro.supported,permission:gyro.permission,status:gyro.status,enabled:gyro.enabled,inverted:gyro.inverted,rawTilt:gyro.rawTilt,neutral:gyro.neutral,target:gyro.target,steer:gyro.steer,samples:gyro.calibrationSamples}},display:{touch:IS_TOUCH,ios:IS_IOS,standalone:IS_STANDALONE,fullscreenSupported:FULLSCREEN_SUPPORTED,fullscreenActive:!!document.fullscreenElement,fullscreenStatus:fullscreenState.status,fullscreenAttempts:fullscreenState.attempts,lastFullscreenResult:fullscreenState.lastResult,lastFullscreenError:fullscreenState.lastError,orientationLockSupported:typeof screen.orientation?.lock==='function',orientationStatus:fullscreenState.orientation,installHintVisible:!dom.installHint.hidden},stream:{activeChunks:world.activeIndices(),rebuiltThisFrame:world.rebuiltThisFrame,poolSize:world.slots.length,pickupSlots:pickupSystem.records.length},quality:{tier:state.qualityTier,dpr:renderer.getPixelRatio(),dof:state.dofEnabled,godRays:state.godRaysEnabled,frameMsEma:state.frameMsEma,drawCalls:renderer.info.render.calls,triangles:renderer.info.render.triangles},audio:{created:!!audio.context,state:audio.context?.state||'not-created',activeShots:audio.activeShots,lastShot:audio.lastShot},lastEvent:state.lastEvent,events:state.events.slice()};}
 
     const debugEnabled=new URLSearchParams(location.search).has('debug');
     const debugApi={snapshot:debugSnapshot,worldProbe,deterministicSignature,fullscreenPolicy};
     if(debugEnabled)Object.assign(debugApi,{pauseSimulation:value=>state.paused=!!value,step:(frames=1,dt=CONFIG.physics.fixedStep)=>{for(let i=0;i<frames;i++)physicsStep(dt);return debugSnapshot();},setInput:values=>{if(Number.isFinite(values.steer))input.touchSteer=clamp(values.steer,-1,1);if('tuck'in values){if(values.tuck)input.keys.add('KeyW');else input.keys.delete('KeyW');}if(Number.isFinite(values.spin)){input.touchSpin=values.spin!==0;input.lastTouchSteer=Math.sign(values.spin)||1;}if('grab'in values){if(values.grab)input.keys.add('KeyS');else input.keys.delete('KeyS');}},pulse:action=>{if(action==='jump')input.jumpQueued=true;else if(action==='respawn')respawn();},gyroMath:(beta,gamma,angle=0)=>orientationTilt(beta,gamma,angle),gyroEnable:()=>{gyro.permission='granted';gyro.enabled=true;beginGyroCalibration();return debugSnapshot();},gyroSample:({beta=0,gamma=0,angle=currentScreenAngle(),time=performance.now()}={})=>{const tilt=orientationTilt(beta,gamma,angle);if(tilt!==null)acceptGyroTilt(tilt,time);return debugSnapshot();},teleport:({distance=state.distance,lateral=0,heightOffset=0,speed=20,yawOffset=0}={})=>{const z=state.startZ+distance;track.lateralFrame(z,centerScratch,sideScratch,dirScratch);const x=centerScratch.x+lateral/sideScratch.x;rider.position.set(x,heightAt(x,z)+CONFIG.physics.riderHeight+heightOffset,z);rider.yaw=Math.atan2(dirScratch.x,dirScratch.z)+yawOffset;rider.boardYaw=rider.yaw;rider.velocity.set(Math.sin(rider.yaw)*speed,0,Math.cos(rider.yaw)*speed);rider.grounded=heightOffset<=0;state.ride=rider.grounded?'GROUNDED':'AIRBORNE';world.update(rider.position.z);return debugSnapshot();},grant:kind=>{if(kind==='boost')state.boost=CONFIG.pickups.boostSeconds;else if(kind==='shield')state.shield=true;else award(CONFIG.pickups.orbScore,'ORB');return debugSnapshot();},collide:kind=>{fatalContact(kind);return debugSnapshot();},forceGate:outcome=>{if(outcome==='pass')award(CONFIG.pickups.gateScore,'GATE');else{resetCombo();popup('GATE MISSED','bad');}return debugSnapshot();},forceQualityStep:()=>{stepQuality();return debugSnapshot();}});
-    window.__ALPINE_DEBUG__=debugApi;window.__ALPINE_CONFIG__=CONFIG;window.__ALPINE_ASSETS__=visualAssets;
+    visualAssets.phase1=phaseOneAssets;window.__ALPINE_DEBUG__=debugApi;window.__ALPINE_CONFIG__=CONFIG;window.__ALPINE_ASSETS__=visualAssets;
 
     updateGyroUi();updateFullscreenUi();initialRiderPose();camera.position.set(rider.position.x+CONFIG.camera.menuRadius,rider.position.y+CONFIG.camera.menuHeight,rider.position.z);camera.lookAt(rider.position);resizeRendering();document.body.dataset.gameState='menu';
     try{renderer.compile(scene,camera);}catch(error){showError(error.stack||error.message);}

@@ -1,4 +1,16 @@
-# Third-party assets
+# Assets and licenses
+
+## ALPINE RUSH project assets
+
+The following project-specific bitmap assets were generated with OpenAI's
+built-in image generation tool on 2026-08-01 and processed locally for this
+game. No third-party image files were incorporated:
+
+- `assets/alpine-rush/snow-detail.png`
+- `assets/alpine-rush/powder-atlas.png`
+
+Their final prompts, formats, processing notes, and runtime fallback behavior
+are documented in [`assets/alpine-rush/README.md`](./assets/alpine-rush/README.md).
 
 ## KayKit Forest Nature Pack 1.0 FREE
 
