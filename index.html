@@ -371,7 +371,9 @@
         goggles: 0x267EC9, pine: 0x173D33, pineMid: 0x285A49,
         trunk: 0x624430, rock: 0x65788A, rockSnow: 0xDDEAF7,
         cyan: 0x4FD8FF, gold: 0xF4B93D, shield: 0xF4FBFF,
-        redGate: 0xE8493E, blueGate: 0x327CD6, orange: 0xE8552D
+        redGate: 0xE8493E, blueGate: 0x327CD6, orange: 0xE8552D,
+        boardEmissive: 0x3A0B03, jacketEmissive: 0x3B0E05,
+        jacketShadow: 0xC34529, helmetEmissive: 0x3A2400, contactShadow: 0x315B7C
       },
       track: {
         pointSpacing: 30, initialBehind: 12, lazyAhead: 1500,
@@ -396,11 +398,14 @@
         kickerCurveLimit: 0.0105, snowRoughness: 0.94
       },
       decor: {
-        maxTreesPerVariant: 44, maxRocks: 16, maxLogs: 3, maxBushes: 36,
+        maxTreesPerVariant: 44, maxRocks: 16, maxLogs: 3, maxBushes: 44,
         nearDensity: 0.62, farDensity: 0.90, treeScaleMin: 0.78, treeScaleMax: 2.15,
         obstacleStartChunk: 3, obstacleRampChunks: 34, obstacleMax: 4,
         heroChance: 0.56, logChance: 0.075, pisteRockChance: 0.18,
-        fullLod: 220, mediumLod: 460, aoRadius: 8.2, aoStrength: 0.38
+        fullLod: 220, mediumLod: 460, aoRadius: 8.2, aoStrength: 0.38,
+        baseBushMax: 36,
+        edgeBushExtra: 8, edgeBushLateralMin: 16.8, edgeBushLateralMax: 20.8,
+        edgeBushJitter: 3.2, edgeBushScaleMin: 0.48, edgeBushScaleMax: 0.92
       },
       assets: {
         basePath: './assets/kaykit-forest/', loadTimeoutMs: 8000,
@@ -415,6 +420,9 @@
         ridgeSpan: 1160, ridgeSegments: 58, ridgeRows: 5, ridgeDepth: 190,
         ridgeFloor: -52, ridgeMinHeight: 88, ridgeHeightRange: 172,
         ridgePeaks: 13, ridgeSnowLine: 102, ridgeBaseLift: 14,
+        ridgeLight: [-0.52, 0.68, -0.50], ridgeAmbient: 0.68,
+        ridgeSunStrength: 0.52, ridgeSkyFill: 0.16,
+        ridgeHazeNear: 0.18, ridgeHazeFar: 0.42,
         forestDistance: 220, forestSpan: 920, forestCount: 190,
         forestHeightMin: 8, forestHeightMax: 25, forestBaseLift: 16
       },
@@ -459,10 +467,19 @@
         trailSegments: 320, trailLife: 6, trailMinSpeed: 5,
         sprayCount: 760, powderCount: 420, ringCount: 10,
         flakesDesktop: 1600, flakesMobile: 720, snowBoxX: 80, snowBoxY: 40, snowBoxZ: 100,
-        bloomThreshold: 0.92, bloomStrength: 0.44, bloomRadius: 0.34,
+        bloomThreshold: 0.80, bloomStrength: 0.66, bloomRadius: 0.42,
+        bloomComposite: 0.52, bloomScaleDesktop: 0.50, bloomScaleMobile: 0.36,
         dofStart: 45, dofRange: 130, godRaySamples: 64,
         motionBlurStart: 18, streakSpeed: 32, chromaDecay: 3.8,
-        grain: 0.018, gradeContrast: 1.18, gradeSaturation: 1.10
+        grain: 0.012, gradeContrast: 1.15, gradeSaturation: 1.08,
+        gradeHighlightGain: [1.035, 1.012, 0.975],
+        highlightShoulder: 0.11, snowGrooveStrength: 0.052,
+        snowNormalStrength: 0.030, snowSlopeTint: 0.18, snowSparkle: 2.5,
+        riderBoardEmissive: 0.07, riderJacketEmissive: 0.10,
+        riderJacketShadowEmissive: 0.06, riderHelmetEmissive: 0.08,
+        riderShadowOpacity: 0.24, riderShadowAirFade: 4.2,
+        riderShadowGroundScale: 1.05, riderShadowAirScale: 1.72,
+        riderShadowSurfaceOffset: 0.028
       },
       audio: {
         master: 0.60, scrapeMax: 0.24, windMax: 0.34, ambientGain: 0.045,
@@ -476,6 +493,7 @@
     const IS_MOBILE = IS_TOUCH || Math.min(innerWidth, innerHeight) < 700;
     const DEG = Math.PI / 180;
     const TAU = Math.PI * 2;
+    const BLOOM_LAYER = 3;
     const clamp = THREE.MathUtils.clamp;
     const lerp = THREE.MathUtils.lerp;
     const smoothstep = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
@@ -827,7 +845,7 @@
         rocks.push({ x: track.xAt(z) + lateral, z, scale: randRange(rng, 0.7, 1.65), yaw: rng() * TAU, obstacle: false });
       }
 
-      const bushCount = randInt(rng, 18, CONFIG.decor.maxBushes);
+      const bushCount = randInt(rng, 18, CONFIG.decor.baseBushMax);
       for (let i = 0; i < bushCount; i++) {
         const z = startZ + randRange(rng, 2, 98);
         const sign = rng() < 0.5 ? -1 : 1;
@@ -907,6 +925,22 @@
       if (rng() < CONFIG.pickups.shieldChance) {
         const z = startZ + 62;
         pickups.push({ type: 'shield', x: track.xAt(z) - 3.5, z, lift: 1.55 });
+      }
+
+      // A separate decor-only stream adds a readable piste edge without changing
+      // the seeded gameplay stream used by obstacles, gates, and pickups.
+      const edgeRng = mulberry32(chunkSeed(chunkIndex, 0xED6E));
+      for (let i = 0; i < CONFIG.decor.edgeBushExtra; i++) {
+        const z = startZ + (i + .5) * CONFIG.terrain.chunkLength / CONFIG.decor.edgeBushExtra + randRange(edgeRng, -CONFIG.decor.edgeBushJitter, CONFIG.decor.edgeBushJitter);
+        const sign = (i + chunkIndex) % 2 ? -1 : 1;
+        track.lateralFrame(z, centerScratch, sideScratch, dirScratch);
+        const lateral = sign * randRange(edgeRng, CONFIG.decor.edgeBushLateralMin, CONFIG.decor.edgeBushLateralMax);
+        bushes.push({
+          x: centerScratch.x + sideScratch.x * lateral,
+          z: centerScratch.z + sideScratch.z * lateral,
+          scale: randRange(edgeRng, CONFIG.decor.edgeBushScaleMin, CONFIG.decor.edgeBushScaleMax),
+          yaw: edgeRng() * TAU
+        });
       }
 
       return { chunkIndex, kickers, trees, rocks, logs, bushes, obstacles, pickups, gates };
@@ -1090,42 +1124,48 @@
 
     const sunTexture = makeRadialTexture([[0,'rgba(255,250,218,1)'],[.12,'rgba(255,234,171,1)'],[.3,'rgba(255,190,90,.45)'],[1,'rgba(255,174,66,0)']]);
     const sunSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: sunTexture, color: 0xFFF0C4, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, depthTest: true }));
-    sunSprite.scale.set(28,28,1); sunSprite.layers.set(1); scene.add(sunSprite);
+    sunSprite.scale.set(28,28,1); sunSprite.layers.set(1); sunSprite.layers.enable(BLOOM_LAYER); scene.add(sunSprite);
     const haloSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: sunTexture, color: 0xFFD18A, transparent: true, opacity: .36, blending: THREE.AdditiveBlending, depthWrite: false }));
-    haloSprite.scale.set(62,62,1); haloSprite.layers.set(1); scene.add(haloSprite);
+    haloSprite.scale.set(62,62,1); haloSprite.layers.set(1); haloSprite.layers.enable(BLOOM_LAYER); scene.add(haloSprite);
 
     const decorMaterial = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.88, metalness: 0, flatShading: true });
     const snowMaterial = new THREE.MeshStandardMaterial({ color: CONFIG.colors.snow, vertexColors: true, roughness: CONFIG.terrain.snowRoughness, metalness: 0, flatShading: false });
     snowMaterial.onBeforeCompile = shader => {
       shader.vertexShader = shader.vertexShader
-        .replace('#include <common>', `#include <common>\nattribute float lateral; varying float vLateral; varying vec3 vSnowWorld;`)
-        .replace('#include <project_vertex>', `#include <project_vertex>\nvLateral=lateral; vSnowWorld=(modelMatrix*vec4(transformed,1.0)).xyz;`);
+        .replace('#include <common>', `#include <common>\nattribute float lateral; varying float vLateral; varying vec3 vSnowWorld; varying float vSnowDepth; varying vec3 vSnowNormal;`)
+        .replace('#include <project_vertex>', `#include <project_vertex>\nvLateral=lateral; vSnowWorld=(modelMatrix*vec4(transformed,1.0)).xyz; vSnowDepth=-mvPosition.z; vSnowNormal=normalize(mat3(modelMatrix)*objectNormal);`);
       shader.fragmentShader = shader.fragmentShader
-        .replace('#include <common>', `#include <common>\nvarying float vLateral; varying vec3 vSnowWorld;\nfloat snowHash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453123);}`)
+        .replace('#include <common>', `#include <common>\nvarying float vLateral; varying vec3 vSnowWorld; varying float vSnowDepth; varying vec3 vSnowNormal;\nfloat snowHash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453123);}`)
         .replace('#include <color_fragment>', `#include <color_fragment>
           float piste=1.0-smoothstep(15.2,17.8,abs(vLateral));
-          float cordPhase=vLateral*18.5;
+          float detailFade=1.0-smoothstep(38.0,108.0,vSnowDepth);
+          float cordPhase=vLateral*17.0;
           float aa=max(fwidth(cordPhase)*.32,.018);
           float groove=1.0-smoothstep(.025+aa,.15+aa*1.8,abs(sin(cordPhase)));
           float rib=pow(abs(cos(cordPhase)),18.0);
           float edgeBand=exp(-pow((abs(vLateral)-16.0)*.55,2.0));
-          diffuseColor.rgb*=1.0-groove*piste*.115-edgeBand*.115;
-          diffuseColor.rgb+=vec3(.016,.025,.040)*rib*piste;
-          diffuseColor.rgb=mix(diffuseColor.rgb,diffuseColor.rgb*vec3(.80,.90,1.08),smoothstep(16.0,27.0,abs(vLateral))*.46);`)
+          float offPiste=smoothstep(16.0,27.0,abs(vLateral));
+          float windSlab=snowHash(floor(vSnowWorld.xz*.30))-.5;
+          float slope=1.0-clamp(vSnowNormal.y,0.0,1.0);
+          diffuseColor.rgb*=1.0-groove*piste*detailFade*${CONFIG.effects.snowGrooveStrength.toFixed(3)}-edgeBand*.078;
+          diffuseColor.rgb+=vec3(.014,.023,.038)*rib*piste*detailFade;
+          diffuseColor.rgb*=1.0+windSlab*(.012+.022*offPiste);
+          diffuseColor.rgb=mix(diffuseColor.rgb,diffuseColor.rgb*vec3(.82,.91,1.075),offPiste*.44);
+          diffuseColor.rgb=mix(diffuseColor.rgb,diffuseColor.rgb*vec3(.86,.94,1.08),slope*${CONFIG.effects.snowSlopeTint.toFixed(3)});`)
         .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
           float pisteN=1.0-smoothstep(15.0,18.0,abs(vLateral));
-          float cord=cos(vLateral*18.5)*.045*pisteN;
-          float micro=(snowHash(floor(vSnowWorld.xz*5.5))-.5)*.038*(1.0-pisteN);
+          float cord=cos(vLateral*17.0)*${CONFIG.effects.snowNormalStrength.toFixed(3)}*pisteN*(1.0-smoothstep(32.0,104.0,vSnowDepth));
+          float micro=(snowHash(floor(vSnowWorld.xz*5.5))-.5)*.036*(1.0-pisteN);
           normal=normalize(normal+mat3(viewMatrix)*vec3(cord,micro,-cord*.35));`)
         .replace('#include <lights_fragment_end>', `#include <lights_fragment_end>
           float halfLambert=dot(normal,vec3(.0,1.0,.0))*.5+.5;
           reflectedLight.indirectDiffuse+=vec3(.055,.105,.18)*(1.0-halfLambert);
           float cell=snowHash(floor(vSnowWorld.xz*10.0));
-          float sparkle=step(.987,cell)*pow(max(dot(normal,normalize(vViewPosition)),0.0),110.0)*3.5;
+          float sparkle=step(.989,cell)*pow(max(dot(normal,normalize(vViewPosition)),0.0),110.0)*${CONFIG.effects.snowSparkle.toFixed(2)}*(1.0-smoothstep(30.0,104.0,vSnowDepth));
           reflectedLight.directSpecular+=vec3(.72,.90,1.0)*sparkle;`);
       snowMaterial.userData.shader = shader;
     };
-    snowMaterial.customProgramCacheKey = () => 'alpine-snow-r160-v3';
+    snowMaterial.customProgramCacheKey = () => 'alpine-snow-r160-v4';
 
     function loadGltfWithTimeout(loader, url) {
       return new Promise((resolve, reject) => {
@@ -1509,13 +1549,13 @@
     }
 
     const riderMaterials = {
-      board: new THREE.MeshStandardMaterial({ color: CONFIG.colors.orange, roughness: .56, flatShading: true }),
-      jacket: new THREE.MeshStandardMaterial({ color: CONFIG.colors.jacket, roughness: .86, flatShading: true }),
-      jacketShadow: new THREE.MeshStandardMaterial({ color: 0xB93A25, roughness: .9, flatShading: true }),
+      board: new THREE.MeshStandardMaterial({ color: CONFIG.colors.orange, roughness: .56, flatShading: true, emissive: CONFIG.colors.boardEmissive, emissiveIntensity: CONFIG.effects.riderBoardEmissive }),
+      jacket: new THREE.MeshStandardMaterial({ color: CONFIG.colors.jacket, roughness: .86, flatShading: true, emissive: CONFIG.colors.jacketEmissive, emissiveIntensity: CONFIG.effects.riderJacketEmissive }),
+      jacketShadow: new THREE.MeshStandardMaterial({ color: CONFIG.colors.jacketShadow, roughness: .9, flatShading: true, emissive: CONFIG.colors.jacketEmissive, emissiveIntensity: CONFIG.effects.riderJacketShadowEmissive }),
       pants: new THREE.MeshStandardMaterial({ color: 0x263849, roughness: .88, flatShading: true }),
       boot: new THREE.MeshStandardMaterial({ color: 0x162431, roughness: .9, flatShading: true }),
       skin: new THREE.MeshStandardMaterial({ color: 0xE8B08D, roughness: .88, flatShading: true }),
-      helmet: new THREE.MeshStandardMaterial({ color: CONFIG.colors.helmet, roughness: .68, flatShading: true }),
+      helmet: new THREE.MeshStandardMaterial({ color: CONFIG.colors.helmet, roughness: .68, flatShading: true, emissive: CONFIG.colors.helmetEmissive, emissiveIntensity: CONFIG.effects.riderHelmetEmissive }),
       goggles: new THREE.MeshStandardMaterial({ color: CONFIG.colors.goggles, roughness: .22, metalness: .12, flatShading: true, emissive: 0x063A69, emissiveIntensity: .28 })
     };
 
@@ -1553,6 +1593,21 @@
     }
 
     const riderRig = createRider();
+
+    function createRiderContactShadow() {
+      const texture = makeRadialTexture([[0,'rgba(255,255,255,.92)'],[.42,'rgba(255,255,255,.54)'],[1,'rgba(255,255,255,0)']], 64);
+      const geometry = new THREE.CircleGeometry(1, 32); geometry.rotateX(-Math.PI * .5);
+      const material = new THREE.MeshBasicMaterial({
+        map: texture, color: CONFIG.colors.contactShadow, transparent: true,
+        opacity: CONFIG.effects.riderShadowOpacity, depthWrite: false, depthTest: true,
+        side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -1
+      });
+      const mesh = new THREE.Mesh(geometry, material);
+      mesh.name = 'rider-contact-shadow'; mesh.castShadow = false; mesh.receiveShadow = false;
+      mesh.layers.set(2); scene.add(mesh); return mesh;
+    }
+
+    const riderContactShadow = createRiderContactShadow();
     const savedBest = (() => { try { return Number(localStorage.getItem(CONFIG.ui.bestKey)) || 0; } catch { return 0; } })();
     const savedGyroInvert = (() => { try { const value=localStorage.getItem(CONFIG.gyro.invertKey);return value===null?CONFIG.gyro.defaultInvert:value==='1'; } catch { return CONFIG.gyro.defaultInvert; } })();
     const state = {
@@ -1721,7 +1776,7 @@
     };
     for (const mesh of Object.values(pickupMeshes)) {
       mesh.count = 0; mesh.frustumCulled = false; mesh.castShadow = false;
-      mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage); scene.add(mesh);
+      mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage); mesh.layers.enable(BLOOM_LAYER); scene.add(mesh);
     }
 
     class PickupSystem {
@@ -1851,6 +1906,7 @@
     const colorScratch = new THREE.Color();
     const sprayPool = new ParticlePool(CONFIG.effects.sprayCount, true, .012);
     const powderPool = new ParticlePool(CONFIG.effects.powderCount, false, .18);
+    sprayPool.points.layers.enable(BLOOM_LAYER);
 
     function spawnBurst(x, y, z, color, count = 28, strength = 1) {
       for (let i = 0; i < count; i++) {
@@ -1926,7 +1982,7 @@
         const geometry=new THREE.RingGeometry(.72,1,48); geometry.rotateX(-Math.PI*.5);
         for(let i=0;i<CONFIG.effects.ringCount;i++){
           const material=new THREE.MeshBasicMaterial({color:CONFIG.colors.cyan,transparent:true,opacity:0,side:THREE.DoubleSide,depthWrite:false,blending:THREE.AdditiveBlending});
-          const mesh=new THREE.Mesh(geometry,material); mesh.visible=false; scene.add(mesh);
+          const mesh=new THREE.Mesh(geometry,material); mesh.visible=false; mesh.layers.enable(BLOOM_LAYER); scene.add(mesh);
           this.items.push({mesh,age:0,duration:1});
         }
       }
@@ -1963,6 +2019,7 @@
       const cfg=CONFIG.scenery,rng=mulberry32(seed),segments=cfg.ridgeSegments,rows=cfg.ridgeRows;
       const positions=[],colors=[],summits=new Float32Array(segments+1),peaks=[];
       const rock=new THREE.Color(baseColor),snow=new THREE.Color(snowColor),haze=new THREE.Color(CONFIG.renderer.fogColor);
+      const ridgeLight=new THREE.Vector3(cfg.ridgeLight[0],cfg.ridgeLight[1],cfg.ridgeLight[2]).normalize();
       for(let i=0;i<cfg.ridgePeaks;i++)peaks.push({center:rng()*segments,width:2.8+rng()*7.2,height:(cfg.ridgeMinHeight+cfg.ridgeHeightRange*(.46+rng()*.54))*heightScale});
       for(let i=0;i<=segments;i++){
         let height=cfg.ridgeMinHeight*.58*heightScale;
@@ -1979,9 +2036,16 @@
       const addTriangle=(a,b,c,faceIndex,forceRock=false)=>{
         positions.push(...a,...b,...c);
         const averageY=(a[1]+b[1]+c[1])/3;
-        const snowMix=forceRock?0:smoothstep(cfg.ridgeSnowLine-22,cfg.ridgeSnowLine+24,averageY);
-        const jitter=.70+hash2(faceIndex,seed,seed+311)*.28;
-        colorScratch.copy(rock).lerp(snow,snowMix).multiplyScalar(lerp(jitter,.94,snowMix)).lerp(haze,clamp(distance/1050*.44,.12,.38));
+        const abx=b[0]-a[0],aby=b[1]-a[1],abz=b[2]-a[2],acx=c[0]-a[0],acy=c[1]-a[1],acz=c[2]-a[2];
+        let nx=aby*acz-abz*acy,ny=abz*acx-abx*acz,nz=abx*acy-aby*acx;
+        const normalLength=Math.max(.0001,Math.hypot(nx,ny,nz));nx/=normalLength;ny/=normalLength;nz/=normalLength;
+        if(nz>0){nx=-nx;ny=-ny;nz=-nz;}
+        const upward=clamp(ny*.5+.5,0,1),snowMix=(forceRock?0:smoothstep(cfg.ridgeSnowLine-22,cfg.ridgeSnowLine+24,averageY))*lerp(.42,1,upward);
+        const sunFacing=Math.max(0,nx*ridgeLight.x+ny*ridgeLight.y+nz*ridgeLight.z),skyFill=Math.max(0,ny);
+        const jitter=.95+hash2(faceIndex,seed,seed+311)*.10;
+        const brightness=(cfg.ridgeAmbient+sunFacing*cfg.ridgeSunStrength+skyFill*cfg.ridgeSkyFill)*jitter;
+        const hazeMix=lerp(cfg.ridgeHazeNear,cfg.ridgeHazeFar,smoothstep(cfg.ridgeNearDistance,cfg.ridgeFarDistance,distance));
+        colorScratch.copy(rock).lerp(snow,snowMix).multiplyScalar(lerp(brightness,Math.max(.88,brightness),snowMix*.52)).lerp(haze,hazeMix);
         for(let v=0;v<3;v++)colors.push(colorScratch.r,colorScratch.g,colorScratch.b);
       };
       let face=0;
@@ -2036,7 +2100,7 @@
       const mesh=new THREE.Mesh(new THREE.PlaneGeometry(260,62),new THREE.MeshBasicMaterial({map:cloudTexture,transparent:true,opacity:.55,depthWrite:false,fog:false,blending:THREE.NormalBlending,side:THREE.DoubleSide}));
       mesh.rotation.x=-Math.PI*.42;mesh.layers.set(2);mesh.userData.offset=(i-1.5)*185;mesh.userData.speed=.9+i*.24;scene.add(mesh);clouds.push(mesh);
     }
-    camera.layers.enable(1);camera.layers.enable(2);
+    camera.layers.enable(1);camera.layers.enable(2);camera.layers.enable(BLOOM_LAYER);
 
     class ProceduralAudio {
       constructor() {
@@ -2119,10 +2183,10 @@
     }
 
     const UberAShader={
-      uniforms:{tDiffuse:{value:null},tDepth:{value:null},tGodRays:{value:null},resolution:{value:new THREE.Vector2(renderWidth,renderHeight)},cameraNear:{value:camera.near},cameraFar:{value:camera.far},dofEnabled:{value:state.dofEnabled?1:0},godRays:{value:0},sunPos:{value:sunScreen},speed:{value:0},boost:{value:0},time:{value:0}},
+      uniforms:{tDiffuse:{value:null},tDepth:{value:null},tGodRays:{value:null},tBloom:{value:null},resolution:{value:new THREE.Vector2(renderWidth,renderHeight)},cameraNear:{value:camera.near},cameraFar:{value:camera.far},dofEnabled:{value:state.dofEnabled?1:0},godRays:{value:0},sunPos:{value:sunScreen},speed:{value:0},boost:{value:0},time:{value:0}},
       vertexShader:`varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,
       fragmentShader:`
-        varying vec2 vUv;uniform sampler2D tDiffuse;uniform sampler2D tDepth;uniform sampler2D tGodRays;uniform vec2 resolution;uniform float cameraNear;uniform float cameraFar;uniform float dofEnabled;uniform float godRays;uniform vec2 sunPos;uniform float speed;uniform float boost;uniform float time;
+        varying vec2 vUv;uniform sampler2D tDiffuse;uniform sampler2D tDepth;uniform sampler2D tGodRays;uniform sampler2D tBloom;uniform vec2 resolution;uniform float cameraNear;uniform float cameraFar;uniform float dofEnabled;uniform float godRays;uniform vec2 sunPos;uniform float speed;uniform float boost;uniform float time;
         float unpackDepth(vec4 v){return dot(v,vec4(1.0/16777216.0,1.0/65536.0,1.0/256.0,1.0));}
         float viewDistance(float depth){float vz=(cameraNear*cameraFar)/((cameraFar-cameraNear)*depth-cameraFar);return -vz;}
         float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
@@ -2134,6 +2198,7 @@
           vec2 texel=1.0/resolution;vec2 p0=vec2(-.326,-.406),p1=vec2(-.840,-.074),p2=vec2(-.696,.457),p3=vec2(-.203,.621),p4=vec2(.962,-.195),p5=vec2(.473,-.480);
           vec2 dofScale=texel*(1.0+2.0*coc);vec3 color=texture2D(tDiffuse,vUv).rgb*.28;
           color+=texture2D(tDiffuse,vUv+p0*dofScale-radial*motion).rgb*.12;color+=texture2D(tDiffuse,vUv+p1*dofScale-radial*motion*.65).rgb*.12;color+=texture2D(tDiffuse,vUv+p2*dofScale-radial*motion*.32).rgb*.12;color+=texture2D(tDiffuse,vUv+p3*dofScale+radial*motion*.25).rgb*.12;color+=texture2D(tDiffuse,vUv+p4*dofScale+radial*motion*.58).rgb*.12;color+=texture2D(tDiffuse,vUv+p5*dofScale+radial*motion).rgb*.12;
+          color+=texture2D(tBloom,vUv).rgb*${CONFIG.effects.bloomComposite.toFixed(3)};
           float edgeFade=1.0-smoothstep(.12,.72,distance(vUv,sunPos));float centerDim=mix(.55,1.0,smoothstep(.12,.34,distance(sunPos,vec2(.5))));
           color+=texture2D(tGodRays,vUv).rgb*vec3(1.0,.72,.42)*godRays*edgeFade*centerDim*.38;
           float angle=atan(radial.y,radial.x)+time*.18;float streak=pow(max(0.0,sin(angle*38.0+hash(floor(radial*180.0))*6.28)),22.0)*smoothstep(.45,1.0,speed+boost)*smoothstep(.24,.78,edge)*.10;
@@ -2141,19 +2206,29 @@
         }`
     };
     const UberBShader={
-      uniforms:{tDiffuse:{value:null},resolution:{value:new THREE.Vector2(renderWidth,renderHeight)},time:{value:0},chroma:{value:0},boost:{value:0},boundary:{value:0},grain:{value:CONFIG.effects.grain},contrast:{value:CONFIG.effects.gradeContrast},saturation:{value:CONFIG.effects.gradeSaturation}},
+      uniforms:{tDiffuse:{value:null},resolution:{value:new THREE.Vector2(renderWidth,renderHeight)},time:{value:0},chroma:{value:0},boost:{value:0},boundary:{value:0},grain:{value:CONFIG.effects.grain},contrast:{value:CONFIG.effects.gradeContrast},saturation:{value:CONFIG.effects.gradeSaturation},shoulder:{value:CONFIG.effects.highlightShoulder}},
       vertexShader:`varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,
-      fragmentShader:`varying vec2 vUv;uniform sampler2D tDiffuse;uniform vec2 resolution;uniform float time;uniform float chroma;uniform float boost;uniform float boundary;uniform float grain;uniform float contrast;uniform float saturation;float hash(vec2 p){return fract(sin(dot(p,vec2(12.9898,78.233)))*43758.5453);}void main(){vec2 d=vUv-.5;float edge=dot(d,d)*2.0;vec2 shift=d*(.00055+chroma*.0034);float r=texture2D(tDiffuse,vUv+shift).r;float g=texture2D(tDiffuse,vUv).g;float b=texture2D(tDiffuse,vUv-shift).b;vec3 col=vec3(r,g,b);float lum=dot(col,vec3(.2126,.7152,.0722));col+=vec3(.014,.032,.064)*(1.0-smoothstep(.18,.72,lum));col*=mix(vec3(1.0),vec3(1.055,1.02,.94),smoothstep(.56,1.0,lum));col=(col-.5)*contrast+.5;float l=dot(col,vec3(.2126,.7152,.0722));col=mix(vec3(l),col,saturation);col=mix(col,col*vec3(1.09,1.035,.91)+vec3(.018,.008,0.0),boost*.28);col+=vec3(.23,.006,.0)*boundary*smoothstep(.15,.65,edge)*.38;float vignette=1.0-smoothstep(.28,.82,length(d))*.25;col*=vignette;float n=(hash(vUv*resolution+fract(time)*vec2(71.0,31.0))-.5)*grain;col+=n;gl_FragColor=vec4(col,1.0);}`
+      fragmentShader:`varying vec2 vUv;uniform sampler2D tDiffuse;uniform vec2 resolution;uniform float time;uniform float chroma;uniform float boost;uniform float boundary;uniform float grain;uniform float contrast;uniform float saturation;uniform float shoulder;float hash(vec2 p){return fract(sin(dot(p,vec2(12.9898,78.233)))*43758.5453);}void main(){vec2 d=vUv-.5;float edge=dot(d,d)*2.0;vec2 shift=d*(.00055+chroma*.0034);float r=texture2D(tDiffuse,vUv+shift).r;float g=texture2D(tDiffuse,vUv).g;float b=texture2D(tDiffuse,vUv-shift).b;vec3 col=vec3(r,g,b);float lum=dot(col,vec3(.2126,.7152,.0722));col+=vec3(.014,.032,.064)*(1.0-smoothstep(.18,.72,lum));col*=mix(vec3(1.0),vec3(${CONFIG.effects.gradeHighlightGain[0].toFixed(3)},${CONFIG.effects.gradeHighlightGain[1].toFixed(3)},${CONFIG.effects.gradeHighlightGain[2].toFixed(3)}),smoothstep(.56,1.0,lum));float hi=smoothstep(.68,1.0,lum);col*=1.0-hi*shoulder;col=mix(col,vec3(dot(col,vec3(.2126,.7152,.0722))),hi*.035);col=(col-.5)*contrast+.5;float l=dot(col,vec3(.2126,.7152,.0722));col=mix(vec3(l),col,saturation);col=mix(col,col*vec3(1.09,1.035,.91)+vec3(.018,.008,0.0),boost*.28);col+=vec3(.23,.006,.0)*boundary*smoothstep(.15,.65,edge)*.38;float vignette=1.0-smoothstep(.28,.82,length(d))*.25;col*=vignette;float n=(hash(vUv*resolution+fract(time)*vec2(71.0,31.0))-.5)*grain;col+=n;gl_FragColor=vec4(col,1.0);}`
     };
+
+    const bloomScale=IS_MOBILE?CONFIG.effects.bloomScaleMobile:CONFIG.effects.bloomScaleDesktop;
+    const bloomComposer=new EffectComposer(renderer);bloomComposer.renderToScreen=false;
+    const bloomRenderPass=new RenderPass(scene,camera);bloomComposer.addPass(bloomRenderPass);
+    const selectiveBloomPass=new UnrealBloomPass(new THREE.Vector2(renderWidth*bloomScale,renderHeight*bloomScale),CONFIG.effects.bloomStrength,CONFIG.effects.bloomRadius,CONFIG.effects.bloomThreshold);selectiveBloomPass.threshold=CONFIG.effects.bloomThreshold;bloomComposer.addPass(selectiveBloomPass);
 
     const composer=new EffectComposer(renderer);
     const renderPass=new RenderPass(scene,camera);composer.addPass(renderPass);
-    const bloomPass=new UnrealBloomPass(new THREE.Vector2(renderWidth,renderHeight),CONFIG.effects.bloomStrength,CONFIG.effects.bloomRadius,CONFIG.effects.bloomThreshold);bloomPass.threshold=CONFIG.effects.bloomThreshold;composer.addPass(bloomPass);
-    const uberAPass=new ShaderPass(UberAShader);uberAPass.uniforms.tDepth.value=depthTarget.texture;uberAPass.uniforms.tGodRays.value=godRayTarget.texture;composer.addPass(uberAPass);
+    const uberAPass=new ShaderPass(UberAShader);uberAPass.uniforms.tDepth.value=depthTarget.texture;uberAPass.uniforms.tGodRays.value=godRayTarget.texture;uberAPass.uniforms.tBloom.value=bloomComposer.renderTarget2.texture;composer.addPass(uberAPass);
     const outputPass=new OutputPass();composer.addPass(outputPass);
     const uberBPass=new ShaderPass(UberBShader);composer.addPass(uberBPass);
     const smaaPass=new SMAAPass(renderWidth,renderHeight);composer.addPass(smaaPass);
-    composer.setPixelRatio(renderer.getPixelRatio());composer.setSize(innerWidth,innerHeight);
+    composer.setPixelRatio(renderer.getPixelRatio());composer.setSize(innerWidth,innerHeight);bloomComposer.setPixelRatio(renderer.getPixelRatio()*bloomScale);bloomComposer.setSize(innerWidth,innerHeight);
+
+    function renderSelectiveBloom(dt) {
+      const savedTarget=renderer.getRenderTarget(),savedMask=camera.layers.mask,savedAlpha=renderer.getClearAlpha();renderer.getClearColor(savedClearColor);
+      camera.layers.set(BLOOM_LAYER);renderer.setClearColor(0x000000,1);bloomComposer.render(dt);
+      camera.layers.mask=savedMask;renderer.setClearColor(savedClearColor,savedAlpha);renderer.setRenderTarget(savedTarget);
+    }
 
     function popup(text, style='', detail='') {
       const node=document.createElement('div');node.className=`popup ${style}`;node.textContent=text;if(detail){const small=document.createElement('small');small.textContent=detail;node.appendChild(small);}dom.popup.appendChild(node);setTimeout(()=>node.remove(),CONFIG.ui.popupMs);
@@ -2337,6 +2412,17 @@
       riderRig.boardTilt.rotation.y=wrapAngle(rider.boardYaw-rider.yaw);
     }
 
+    function updateRiderContactShadow() {
+      const sample=getHeightAndNormal(rider.position.x,rider.position.z);
+      const clearance=Math.max(0,rider.position.y-CONFIG.physics.riderHeight-sample.height);
+      let fade=1-smoothstep(0,CONFIG.effects.riderShadowAirFade,clearance);fade*=fade;
+      const scale=lerp(CONFIG.effects.riderShadowGroundScale,CONFIG.effects.riderShadowAirScale,1-fade);
+      riderContactShadow.position.set(rider.position.x,sample.height+CONFIG.effects.riderShadowSurfaceOffset,rider.position.z);
+      riderContactShadow.quaternion.setFromUnitVectors(upVector,sample.normal);
+      riderContactShadow.scale.setScalar(scale);riderContactShadow.material.opacity=CONFIG.effects.riderShadowOpacity*fade;
+      riderContactShadow.visible=fade>.015;
+    }
+
     function updateCamera(dt) {
       if(state.mode==='MENU'||state.mode==='ENDED'){
         const angle=state.time*CONFIG.camera.menuSpeed;camera.position.set(rider.position.x+Math.cos(angle)*CONFIG.camera.menuRadius,rider.position.y+CONFIG.camera.menuHeight,rider.position.z+Math.sin(angle)*CONFIG.camera.menuRadius);camera.lookAt(rider.position.x,rider.position.y+1.15,rider.position.z);camera.fov=CONFIG.camera.fovMin;camera.updateProjectionMatrix();cameraLook.set(rider.position.x,rider.position.y+1,rider.position.z);cameraVelocity.set(0,0,0);return;
@@ -2383,7 +2469,7 @@
     }
 
     function resizeRendering() {
-      const dpr=desiredPixelRatio();renderer.setPixelRatio(dpr);renderer.setSize(innerWidth,innerHeight);camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();composer.setPixelRatio(dpr);composer.setSize(innerWidth,innerHeight);renderWidth=Math.max(1,Math.floor(innerWidth*dpr));renderHeight=Math.max(1,Math.floor(innerHeight*dpr));depthTarget.setSize(Math.max(1,renderWidth>>1),Math.max(1,renderHeight>>1));sunMaskTarget.setSize(Math.max(1,renderWidth>>2),Math.max(1,renderHeight>>2));godRayTarget.setSize(Math.max(1,renderWidth>>2),Math.max(1,renderHeight>>2));uberAPass.uniforms.resolution.value.set(renderWidth,renderHeight);uberBPass.uniforms.resolution.value.set(renderWidth,renderHeight);sprayPool.points.material.uniforms.pixelRatio.value=dpr;powderPool.points.material.uniforms.pixelRatio.value=dpr;snowfall.material.uniforms.pixelRatio.value=dpr;
+      const dpr=desiredPixelRatio();renderer.setPixelRatio(dpr);renderer.setSize(innerWidth,innerHeight);camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();composer.setPixelRatio(dpr);composer.setSize(innerWidth,innerHeight);bloomComposer.setPixelRatio(dpr*bloomScale);bloomComposer.setSize(innerWidth,innerHeight);renderWidth=Math.max(1,Math.floor(innerWidth*dpr));renderHeight=Math.max(1,Math.floor(innerHeight*dpr));depthTarget.setSize(Math.max(1,renderWidth>>1),Math.max(1,renderHeight>>1));sunMaskTarget.setSize(Math.max(1,renderWidth>>2),Math.max(1,renderHeight>>2));godRayTarget.setSize(Math.max(1,renderWidth>>2),Math.max(1,renderHeight>>2));uberAPass.uniforms.resolution.value.set(renderWidth,renderHeight);uberBPass.uniforms.resolution.value.set(renderWidth,renderHeight);sprayPool.points.material.uniforms.pixelRatio.value=dpr;powderPool.points.material.uniforms.pixelRatio.value=dpr;snowfall.material.uniforms.pixelRatio.value=dpr;
     }
 
     function stepQuality() {
@@ -2456,7 +2542,7 @@
         if(state.mode==='RUNNING'||state.mode==='TUMBLING'){
           state.accumulator+=dt;let steps=0;while(state.accumulator>=CONFIG.physics.fixedStep&&steps<CONFIG.physics.maxSubsteps){physicsStep(CONFIG.physics.fixedStep);state.accumulator-=CONFIG.physics.fixedStep;steps++;}if(steps===CONFIG.physics.maxSubsteps)state.accumulator=0;
         }else state.time+=dt;
-        updateRiderRig(dt);updateCamera(dt);updateWorldPresentation(dt);updateContactEffects(dt);updateHud(dt);renderPrepasses();updatePost();if(shadowDue){renderer.shadowMap.needsUpdate=true;shadowDue=false;}composer.render(dt);updateAdaptiveQuality(frameMs,dt);requestAnimationFrame(frame);
+        updateRiderRig(dt);updateRiderContactShadow();updateCamera(dt);updateWorldPresentation(dt);updateContactEffects(dt);updateHud(dt);renderPrepasses();updatePost();renderSelectiveBloom(dt);if(shadowDue){renderer.shadowMap.needsUpdate=true;shadowDue=false;}composer.render(dt);updateAdaptiveQuality(frameMs,dt);requestAnimationFrame(frame);
       }catch(error){showError(error.stack||error.message);state.paused=true;}
     }
 
